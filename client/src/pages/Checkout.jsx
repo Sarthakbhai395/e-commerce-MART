@@ -11,6 +11,11 @@ const Checkout = () => {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [orderPlaced, setOrderPlaced] = useState(false)
+  const [paymentError, setPaymentError] = useState('')
+  const [showOTP, setShowOTP] = useState(false)
+  const [otp, setOtp] = useState('')
+  const [otpSent, setOtpSent] = useState(false)
+  const [otpTimer, setOtpTimer] = useState(0)
 
   // Form state
   const [formData, setFormData] = useState({
@@ -34,6 +39,18 @@ const Checkout = () => {
       }))
     }
   }, [user])
+
+  useEffect(() => {
+    let interval = null
+    if (otpTimer > 0) {
+      interval = setInterval(() => {
+        setOtpTimer(prev => prev - 1)
+      }, 1000)
+    } else if (otpTimer === 0) {
+      clearInterval(interval)
+    }
+    return () => clearInterval(interval)
+  }, [otpTimer])
 
   const subtotal = getCartTotal()
   const tax = subtotal * 0.08
@@ -61,6 +78,80 @@ const Checkout = () => {
     })
   }
 
+  const sendOTP = async () => {
+    try {
+      // Format phone number for Indian numbers
+      let formattedPhone = formData.phone;
+      if (formData.phone && !formData.phone.startsWith('+')) {
+        // Assume Indian number if it doesn't start with +
+        formattedPhone = formData.phone.startsWith('91') 
+          ? `+${formData.phone}` 
+          : `+91${formData.phone}`;
+      }
+      
+      const response = await fetch('http://localhost:5000/api/otp/send-otp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          phone: formattedPhone
+        })
+      })
+
+      const data = await response.json()
+      if (data.success) {
+        setOtpSent(true)
+        setOtpTimer(300) // 5 minutes
+        setShowOTP(true)
+        return true
+      } else {
+        setPaymentError(data.error || 'Failed to send OTP')
+        return false
+      }
+    } catch (error) {
+      console.error('OTP sending error:', error)
+      setPaymentError('Failed to send OTP. Please try again.')
+      return false
+    }
+  }
+
+  const verifyOTP = async () => {
+    try {
+      // Format phone number for Indian numbers
+      let formattedPhone = formData.phone;
+      if (formData.phone && !formData.phone.startsWith('+')) {
+        // Assume Indian number if it doesn't start with +
+        formattedPhone = formData.phone.startsWith('91') 
+          ? `+${formData.phone}` 
+          : `+91${formData.phone}`;
+      }
+      
+      const response = await fetch('http://localhost:5000/api/otp/verify-otp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          phone: formattedPhone,
+          otp
+        })
+      })
+
+      const data = await response.json()
+      if (data.success) {
+        return true
+      } else {
+        setPaymentError(data.error || 'Invalid OTP')
+        return false
+      }
+    } catch (error) {
+      console.error('OTP verification error:', error)
+      setPaymentError('Failed to verify OTP. Please try again.')
+      return false
+    }
+  }
+
   const createOrder = async () => {
     try {
       const response = await fetch('http://localhost:5000/api/payment/order', {
@@ -75,13 +166,35 @@ const Checkout = () => {
       });
       
       const data = await response.json();
+      
+      // Log the full response for debugging
+      console.log('Order creation response:', data);
+      
       if (data.success) {
         return data.order;
       } else {
-        throw new Error('Failed to create order');
+        throw new Error(data.error || 'Failed to create order');
       }
     } catch (error) {
       console.error('Order creation error:', error);
+      throw new Error(`Order creation failed: ${error.message}`);
+    }
+  }
+
+  const verifyPayment = async (paymentData) => {
+    try {
+      const response = await fetch('http://localhost:5000/api/payment/verify', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(paymentData)
+      });
+      
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Payment verification error:', error);
       throw error;
     }
   }
@@ -89,11 +202,37 @@ const Checkout = () => {
   const handleRazorpayPayment = async (e) => {
     e.preventDefault()
     setLoading(true)
+    setPaymentError('')
 
     // Validate form
     if (!formData.fullName || !formData.email || !formData.phone || 
         !formData.address || !formData.city || !formData.state || !formData.zipCode) {
-      alert('Please fill in all required fields')
+      setPaymentError('Please fill in all required fields')
+      setLoading(false)
+      return
+    }
+
+    // Send OTP if not already verified
+    if (!otpSent) {
+      const otpSuccess = await sendOTP()
+      if (!otpSuccess) {
+        setLoading(false)
+        return
+      }
+      setLoading(false)
+      return
+    }
+
+    // Verify OTP if entered
+    if (showOTP && otp) {
+      const otpVerified = await verifyOTP()
+      if (!otpVerified) {
+        setLoading(false)
+        return
+      }
+      setShowOTP(false)
+    } else if (showOTP) {
+      setPaymentError('Please enter OTP')
       setLoading(false)
       return
     }
@@ -101,7 +240,7 @@ const Checkout = () => {
     // Load Razorpay script
     const res = await loadRazorpay()
     if (!res) {
-      alert('Failed to load Razorpay. Please try again.')
+      setPaymentError('Failed to load Razorpay. Please try again.')
       setLoading(false)
       return
     }
@@ -112,17 +251,34 @@ const Checkout = () => {
       
       // Create payment options
       const options = {
-        key: 'rzp_test_1DP5mmOlF5G5ag', // This is Razorpay's public test key
+        key: process.env.REACT_APP_RAZORPAY_KEY_ID || 'rzp_test_1DP5mmOlF5G5ag', // Use environment variable
         amount: order.amount, // Amount in paise
         currency: order.currency,
         name: 'Akario Mart',
         description: 'Product Purchase',
         image: 'https://example.com/your_logo.png',
         order_id: order.id, // Order ID from backend
-        handler: function (response) {
-          // Payment successful
-          alert('Payment successful! Payment ID: ' + response.razorpay_payment_id)
-          placeOrder()
+        handler: async function (response) {
+          try {
+            // Verify payment on backend
+            const verificationData = {
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature
+            };
+            
+            const verificationResult = await verifyPayment(verificationData);
+            
+            if (verificationResult.success) {
+              // Payment successful
+              placeOrder()
+            } else {
+              setPaymentError('Payment verification failed. Please contact support.')
+            }
+          } catch (error) {
+            setPaymentError('Payment verification failed. Please try again.')
+            console.error('Verification error:', error)
+          }
         },
         prefill: {
           name: formData.fullName,
@@ -139,12 +295,12 @@ const Checkout = () => {
 
       const rzp = new window.Razorpay(options)
       rzp.on('payment.failed', function (response) {
-        alert('Payment failed. Please try again.')
+        setPaymentError('Payment failed. Please try again.')
         console.log(response.error)
       })
       rzp.open()
     } catch (error) {
-      alert('Failed to initiate payment. Please try again.')
+      setPaymentError('Failed to initiate payment. Please try again.')
       console.error('Payment initiation error:', error)
     } finally {
       setLoading(false)
@@ -160,6 +316,14 @@ const Checkout = () => {
     setTimeout(() => {
       navigate('/user/dashboard')
     }, 3000)
+  }
+
+  const handleResendOTP = async () => {
+    setOtp('')
+    const otpSuccess = await sendOTP()
+    if (otpSuccess) {
+      setOtpTimer(300) // Reset timer to 5 minutes
+    }
   }
 
   if (cartItems.length === 0 && !orderPlaced) {
@@ -228,6 +392,17 @@ const Checkout = () => {
         >
           Checkout
         </motion.h1>
+        
+        {paymentError && (
+          <motion.div 
+            className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4"
+            role="alert"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+          >
+            <span className="block sm:inline">{paymentError}</span>
+          </motion.div>
+        )}
         
         <motion.div 
           className="grid grid-cols-1 lg:grid-cols-3 gap-8"
@@ -341,6 +516,34 @@ const Checkout = () => {
                   </div>
                 </div>
                 
+                {/* OTP Section */}
+                {showOTP && (
+                  <div className="mb-6 p-4 bg-blue-50 rounded-lg">
+                    <h3 className="text-lg font-medium text-blue-800 mb-3">Verify Phone Number</h3>
+                    <p className="text-blue-700 mb-3">We've sent a 6-digit code to {formData.phone}</p>
+                    <div className="flex space-x-2 mb-3">
+                      <input
+                        type="text"
+                        value={otp}
+                        onChange={(e) => setOtp(e.target.value)}
+                        maxLength="6"
+                        className="w-full px-4 py-2 border border-blue-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Enter 6-digit code"
+                      />
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <button
+                        type="button"
+                        onClick={handleResendOTP}
+                        disabled={otpTimer > 0}
+                        className={`text-sm ${otpTimer > 0 ? 'text-gray-500' : 'text-blue-600 hover:text-blue-800'}`}
+                      >
+                        Resend OTP {otpTimer > 0 && `(${Math.floor(otpTimer / 60)}:${String(otpTimer % 60).padStart(2, '0')})`}
+                      </button>
+                    </div>
+                  </div>
+                )}
+                
                 <div className="border-t border-gray-200 pt-6">
                   <h2 className="text-2xl font-semibold mb-6 text-dark-grey">Payment Method</h2>
                   
@@ -368,7 +571,7 @@ const Checkout = () => {
                     whileTap={{ scale: 0.98 }}
                     disabled={loading}
                   >
-                    {loading ? 'Processing...' : `Pay ${formatCurrency(total)}`}
+                    {loading ? 'Processing...' : showOTP ? 'Verify OTP & Pay' : otpSent ? 'Enter OTP to Continue' : `Pay ${formatCurrency(total)}`}
                   </motion.button>
                 </div>
               </form>

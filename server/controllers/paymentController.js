@@ -1,7 +1,7 @@
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
 
-// Initialize Razorpay instance
+// Initialize Razorpay instance with environment variables
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_1DP5mmOlF5G5ag',
   key_secret: process.env.RAZORPAY_KEY_SECRET || 'rzp_test_1DP5mmOlF5G5ag' // In production, use your secret key
@@ -39,7 +39,7 @@ exports.verifyPayment = async (req, res, next) => {
     console.error('Payment verification error:', err);
     res.status(500).json({
       success: false,
-      error: 'Payment verification failed'
+      error: 'Payment verification failed: ' + err.message
     });
   }
 };
@@ -51,9 +51,17 @@ exports.createOrder = async (req, res, next) => {
   try {
     const { amount, currency = 'INR' } = req.body;
     
+    // Validate amount
+    if (!amount || amount <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid amount'
+      });
+    }
+    
     // Create order options
     const options = {
-      amount: amount * 100, // Convert to paise
+      amount: Math.round(amount * 100), // Convert to paise and round to avoid floating point issues
       currency,
       receipt: 'receipt_' + Date.now()
     };
@@ -67,9 +75,17 @@ exports.createOrder = async (req, res, next) => {
     });
   } catch (err) {
     console.error('Order creation error:', err);
+    // Log more detailed error information
+    console.error('Error details:', {
+      message: err.message,
+      code: err.code,
+      statusCode: err.statusCode,
+      description: err.description
+    });
+    
     res.status(500).json({
       success: false,
-      error: 'Order creation failed'
+      error: 'Order creation failed: ' + err.message
     });
   }
 };

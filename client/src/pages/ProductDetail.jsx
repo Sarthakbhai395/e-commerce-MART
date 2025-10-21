@@ -13,8 +13,8 @@ const ProductDetail = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [quantity, setQuantity] = useState(1)
-  const { addToCart } = useCart()
-  const { addToWishlist, isInWishlist } = useWishlist()
+  const { addToCart, loading: cartLoading } = useCart()
+  const { addToWishlist, isInWishlist, loading: wishlistLoading } = useWishlist()
 
   useEffect(() => {
     fetchProduct()
@@ -37,24 +37,36 @@ const ProductDetail = () => {
     }
   }
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     if (product) {
-      addToCart({ ...product, quantity })
+      try {
+        await addToCart(product, quantity)
+      } catch (err) {
+        console.error('Failed to add to cart:', err)
+      }
     }
   }
 
-  const handleAddToWishlist = () => {
+  const handleAddToWishlist = async () => {
     if (product) {
-      addToWishlist(product)
+      try {
+        await addToWishlist(product)
+      } catch (err) {
+        console.error('Failed to add to wishlist:', err)
+      }
     }
   }
 
-  const handleBuyNow = () => {
+  const handleBuyNow = async () => {
     if (product) {
-      // Add to cart first
-      addToCart({ ...product, quantity })
-      // Redirect to checkout page
-      navigate('/checkout')
+      try {
+        // Add to cart first
+        await addToCart(product, quantity)
+        // Redirect to checkout page
+        navigate('/checkout')
+      } catch (err) {
+        console.error('Failed to add to cart:', err)
+      }
     }
   }
 
@@ -72,7 +84,6 @@ const ProductDetail = () => {
       product.image.startsWith('https://')
     );
     
-    // For local images, prefix with uploads path
     // For external images, use as is
     if (isExternalUrl) {
       return product.image;
@@ -323,6 +334,7 @@ const ProductDetail = () => {
                     className="bg-gray-200 text-gray-600 hover:bg-gray-300 rounded-l-lg px-4 py-2"
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
+                    disabled={cartLoading}
                   >
                     -
                   </motion.button>
@@ -332,6 +344,7 @@ const ProductDetail = () => {
                     className="bg-gray-200 text-gray-600 hover:bg-gray-300 rounded-r-lg px-4 py-2"
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
+                    disabled={cartLoading}
                   >
                     +
                   </motion.button>
@@ -349,16 +362,18 @@ const ProductDetail = () => {
                   className="btn-primary text-lg px-8 py-3"
                   whileHover={{ scale: 1.03 }}
                   whileTap={{ scale: 0.98 }}
+                  disabled={cartLoading}
                 >
-                  Add to Cart
+                  {cartLoading ? 'Adding...' : 'Add to Cart'}
                 </motion.button>
                 <motion.button
                   onClick={handleBuyNow}
                   className="bg-green-600 hover:bg-green-700 text-white font-bold text-lg px-8 py-3 rounded-lg transition duration-300"
                   whileHover={{ scale: 1.03 }}
                   whileTap={{ scale: 0.98 }}
+                  disabled={cartLoading}
                 >
-                  Buy Now
+                  {cartLoading ? 'Processing...' : 'Buy Now'}
                 </motion.button>
                 <motion.button
                   onClick={handleAddToWishlist}
@@ -369,8 +384,9 @@ const ProductDetail = () => {
                   }`}
                   whileHover={{ scale: 1.03 }}
                   whileTap={{ scale: 0.98 }}
+                  disabled={wishlistLoading}
                 >
-                  {isInWishlist(product._id || product.id) ? 'Remove from Wishlist' : 'Add to Wishlist'}
+                  {wishlistLoading ? 'Processing...' : (isInWishlist(product._id || product.id) ? 'Remove from Wishlist' : 'Add to Wishlist')}
                 </motion.button>
               </motion.div>
               

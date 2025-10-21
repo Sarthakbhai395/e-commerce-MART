@@ -7,7 +7,7 @@ const WishlistContext = createContext()
 
 export const WishlistProvider = ({ children }) => {
   const { isAuthenticated, user } = useAuth()
-  const { addNotification } = useNotification()
+  const { addNotification, addModalNotification } = useNotification()
   const [wishlistItems, setWishlistItems] = useState([])
   const [loading, setLoading] = useState(false)
 
@@ -16,29 +16,30 @@ export const WishlistProvider = ({ children }) => {
     loadWishlistFromBackend()
   }, [])
 
+  // Load wishlist from backend when user logs in
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadWishlistFromBackend()
+    }
+  }, [isAuthenticated])
+
   const loadWishlistFromBackend = async () => {
     try {
       setLoading(true)
       const token = localStorage.getItem('token')
-      if (token) {
+      if (token && isAuthenticated) {
         const response = await userAPI.getWishlist(token)
         if (response.success) {
           setWishlistItems(response.data)
         }
       } else {
-        // Fallback to local storage
-        const savedWishlist = localStorage.getItem('wishlist')
-        if (savedWishlist) {
-          setWishlistItems(JSON.parse(savedWishlist))
-        }
+        // Clear wishlist if user is not authenticated
+        setWishlistItems([])
       }
     } catch (error) {
       console.error('Failed to load wishlist from backend:', error)
-      // Fallback to local storage
-      const savedWishlist = localStorage.getItem('wishlist')
-      if (savedWishlist) {
-        setWishlistItems(JSON.parse(savedWishlist))
-      }
+      // Clear wishlist on error
+      setWishlistItems([])
     } finally {
       setLoading(false)
     }
@@ -47,7 +48,7 @@ export const WishlistProvider = ({ children }) => {
   const addToWishlist = async (product) => {
     // Check if user is authenticated
     if (!isAuthenticated) {
-      addNotification('Please login to add items to your wishlist', 'warning')
+      addModalNotification('Login Required', 'Please login to add items to your wishlist', 'warning')
       setTimeout(() => {
         window.location.href = '/login'
       }, 1500)
@@ -56,18 +57,18 @@ export const WishlistProvider = ({ children }) => {
     
     // Prevent admins and sellers from adding to wishlist
     if (user && (user.role === 'admin' || user.role === 'seller')) {
-      addNotification('Only users can add products to wishlist. Admins and sellers cannot purchase products.', 'error')
+      addModalNotification('Access Denied', 'Only users can add products to wishlist. Admins and sellers cannot purchase products.', 'error')
       throw new Error('Admins and sellers cannot add products to wishlist')
     }
     
     try {
       const token = localStorage.getItem('token')
-      if (token) {
+      if (token && isAuthenticated) {
         // Add to backend wishlist
         const response = await userAPI.addToWishlist(product._id || product.id, token)
         if (response.success) {
           setWishlistItems(response.data)
-          addNotification('Item added to wishlist successfully!', 'success')
+          addModalNotification('Success', 'Item added to wishlist successfully!', 'success')
           return response.data
         } else {
           throw new Error(response.error || 'Failed to add product to wishlist')
@@ -83,12 +84,12 @@ export const WishlistProvider = ({ children }) => {
           }
           return prevItems
         })
-        addNotification('Item added to wishlist successfully!', 'success')
+        addModalNotification('Success', 'Item added to wishlist successfully!', 'success')
         return Promise.resolve()
       }
     } catch (error) {
       console.error('Failed to add to wishlist:', error)
-      addNotification(error.message || 'Failed to add product to wishlist', 'error')
+      addModalNotification('Error', error.message || 'Failed to add product to wishlist', 'error')
       // Fallback to local state if backend fails
       setWishlistItems(prevItems => {
         // Use _id if available, otherwise use id
@@ -106,21 +107,21 @@ export const WishlistProvider = ({ children }) => {
   const removeFromWishlist = async (productId) => {
     try {
       const token = localStorage.getItem('token')
-      if (token) {
+      if (token && isAuthenticated) {
         // Remove from backend wishlist
         const response = await userAPI.removeFromWishlist(productId, token)
         if (response.success) {
           setWishlistItems(response.data)
-          addNotification('Item removed from wishlist successfully!', 'success')
+          addModalNotification('Success', 'Item removed from wishlist successfully!', 'success')
         }
       } else {
         // Local storage fallback
         setWishlistItems(prevItems => prevItems.filter(item => (item._id || item.id) !== productId))
-        addNotification('Item removed from wishlist successfully!', 'success')
+        addModalNotification('Success', 'Item removed from wishlist successfully!', 'success')
       }
     } catch (error) {
       console.error('Failed to remove from wishlist:', error)
-      addNotification('Failed to remove item from wishlist', 'error')
+      addModalNotification('Error', 'Failed to remove item from wishlist', 'error')
       // Fallback to local state if backend fails
       setWishlistItems(prevItems => prevItems.filter(item => (item._id || item.id) !== productId))
     }
@@ -133,7 +134,7 @@ export const WishlistProvider = ({ children }) => {
   const clearWishlist = async () => {
     try {
       const token = localStorage.getItem('token')
-      if (token) {
+      if (token && isAuthenticated) {
         // Clear backend wishlist
         const response = await userAPI.clearWishlist(token)
         if (response.success) {

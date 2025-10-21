@@ -28,14 +28,7 @@ const Home = () => {
         transition={{ duration: 0.8 }}
       >
         <div className="container mx-auto px-4 text-center">
-          <motion.h1 
-            className="text-4xl md:text-6xl font-bold mb-6"
-            initial={{ y: -30 }}
-            animate={{ y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            Welcome to Akario Mart
-          </motion.h1>
+        
           <motion.p 
             className="text-xl md:text-2xl mb-8 max-w-3xl mx-auto"
             initial={{ y: 30 }}

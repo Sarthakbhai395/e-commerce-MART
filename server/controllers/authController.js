@@ -64,6 +64,14 @@ exports.login = async (req, res, next) => {
       });
     }
 
+    // Check if user is blocked
+    if (user.isBlocked) {
+      return res.status(401).json({
+        success: false,
+        error: 'You are blocked by admin'
+      });
+    }
+
     // Check if role matches
     if (user.role !== role) {
       return res.status(401).json({

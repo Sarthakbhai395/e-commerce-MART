@@ -17,7 +17,33 @@ export const ProductCard = ({
 }) => {
   const { addToCart } = useCart();
   const { addToWishlist, isInWishlist } = useWishlist();
-  const { addNotification } = useNotification();
+  const { addModalNotification } = useNotification();
+
+  // Function to get proper image URL
+  const getProductImageUrl = (imagePath) => {
+    if (!imagePath) {
+      return 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=400&h=300';
+    }
+    
+    // Check if image is an external URL
+    const isExternalUrl = imagePath.startsWith('http://') || imagePath.startsWith('https://');
+    if (isExternalUrl) {
+      return imagePath;
+    }
+    
+    // For local images that already have the /uploads/ prefix
+    if (imagePath.startsWith('/uploads/')) {
+      return `http://localhost:5000${imagePath}`;
+    }
+    
+    // For the default no-photo image
+    if (imagePath === 'no-photo.jpg') {
+      return 'http://localhost:5000/uploads/no-photo.jpg';
+    }
+    
+    // For local images without the /uploads/ prefix, add it
+    return `http://localhost:5000/uploads/${imagePath}`;
+  };
 
   const handleAddToCart = (e) => {
     e.preventDefault();
@@ -35,7 +61,7 @@ export const ProductCard = ({
       reviews
     };
     addToCart(product);
-    addNotification(`${title} added to your cart!`, 'success');
+    // Notification is now handled in CartContext with modal notification
   };
 
   const handleAddToWishlist = (e) => {
@@ -54,7 +80,7 @@ export const ProductCard = ({
       reviews
     };
     addToWishlist(product);
-    addNotification(`${title} added to your wishlist!`, 'success');
+    // Notification is now handled in WishlistContext with modal notification
   };
 
   const handleImageClick = (e) => {
@@ -73,7 +99,7 @@ export const ProductCard = ({
 
   return (
     <motion.div 
-      className="bg-white rounded-sm shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden"
+      className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group"
       whileHover={{ y: -5 }}
       transition={{ duration: 0.3 }}
     >
@@ -85,7 +111,7 @@ export const ProductCard = ({
           transition={{ duration: 0.3 }}
         >
           <img 
-            src={image} 
+            src={getProductImageUrl(image)} 
             alt={title} 
             className="w-full h-48 object-cover"
             onError={handleImageError}
@@ -93,7 +119,7 @@ export const ProductCard = ({
         </motion.div>
         {actualDiscount > 0 && (
           <motion.span 
-            className="absolute top-2 left-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded"
+            className="absolute top-3 left-3 bg-gradient-to-r from-red-500 to-red-600 text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-lg"
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ delay: 0.2 }}
@@ -101,6 +127,20 @@ export const ProductCard = ({
             {actualDiscount}% OFF
           </motion.span>
         )}
+        <motion.button
+          onClick={handleAddToWishlist}
+          className={`absolute top-3 right-3 p-2 rounded-full backdrop-blur-sm transition-all duration-300 ${
+            isInWishlist(id)
+              ? 'text-red-500 bg-red-100 hover:bg-red-200'
+              : 'text-gray-700 bg-white/80 hover:bg-white hover:text-red-500'
+          }`}
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+          </svg>
+        </motion.button>
       </div>
       
       <div className="p-4">
@@ -109,7 +149,7 @@ export const ProductCard = ({
           className="cursor-pointer"
           whileHover={{ x: 5 }}
         >
-          <h3 className="text-gray-800 font-medium mb-2 line-clamp-2 h-12">{title}</h3>
+          <h3 className="text-gray-800 font-semibold mb-2 line-clamp-2 h-12 group-hover:text-blue-600 transition-colors">{title}</h3>
         </motion.div>
         
         <div className="flex items-center mb-2">
@@ -140,25 +180,11 @@ export const ProductCard = ({
         <div className="flex space-x-2">
           <motion.button
             onClick={handleAddToCart}
-            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 text-sm font-medium rounded-sm transition-colors duration-300"
+            className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white py-2.5 px-4 text-sm font-medium rounded-lg transition-all duration-300 shadow-md hover:shadow-lg"
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.98 }}
           >
             Add to Cart
-          </motion.button>
-          <motion.button
-            onClick={handleAddToWishlist}
-            className={`p-2 rounded-sm transition-all duration-300 ${
-              isInWishlist(id)
-                ? 'text-red-500 bg-red-50 hover:bg-red-100'
-                : 'text-gray-400 bg-gray-100 hover:text-red-500 hover:bg-gray-200'
-            }`}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-            </svg>
           </motion.button>
         </div>
       </div>

@@ -5,7 +5,7 @@ import { formatCurrency } from '../../utils/format'
 import { motion } from 'framer-motion'
 
 const WishlistItem = ({ item, onAddToCart, onRemove }) => {
-  const { addNotification } = useNotification()
+  const { addModalNotification } = useNotification()
   const { user } = useAuth()
   const [isAdding, setIsAdding] = useState(false)
   
@@ -15,6 +15,32 @@ const WishlistItem = ({ item, onAddToCart, onRemove }) => {
   // Access product details from the nested product object
   const product = item?.product || item
 
+  // Function to get proper image URL
+  const getProductImageUrl = (product) => {
+    if (!product || !product.image) {
+      return 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=400&h=300';
+    }
+    
+    // Check if image is an external URL
+    const isExternalUrl = product.image.startsWith('http://') || product.image.startsWith('https://');
+    if (isExternalUrl) {
+      return product.image;
+    }
+    
+    // For local images that already have the /uploads/ prefix
+    if (product.image.startsWith('/uploads/')) {
+      return `http://localhost:5000${product.image}`;
+    }
+    
+    // For the default no-photo image
+    if (product.image === 'no-photo.jpg') {
+      return 'http://localhost:5000/uploads/no-photo.jpg';
+    }
+    
+    // For local images without the /uploads/ prefix, add it
+    return `http://localhost:5000/uploads/${product.image}`;
+  };
+
   const discountedPrice = product?.discount 
     ? product.price * (1 - product.discount / 100)
     : product?.price
@@ -22,14 +48,14 @@ const WishlistItem = ({ item, onAddToCart, onRemove }) => {
   const handleAddToCart = async () => {
     // Prevent admins and sellers from adding to cart
     if (user && (user.role === 'admin' || user.role === 'seller')) {
-      addNotification('Sellers and admins cannot purchase products', 'error')
+      addModalNotification('Access Denied', 'Sellers and admins cannot purchase products', 'error')
       return
     }
     
     setIsAdding(true)
     try {
       await onAddToCart(product)
-      addNotification(`${product.name} added to your cart!`, 'success')
+      // Notification is now handled in CartContext with modal notification
     } catch (error) {
       // Error will be handled by the CartContext
     } finally {
@@ -48,11 +74,14 @@ const WishlistItem = ({ item, onAddToCart, onRemove }) => {
       {/* Display product image */}
       {product?.image ? (
         <motion.img 
-          src={product.image} 
+          src={getProductImageUrl(product)} 
           alt={product.name} 
           className="w-24 h-24 object-contain rounded-xl"
           whileHover={{ scale: 1.05 }}
           transition={{ type: "spring", stiffness: 300 }}
+          onError={(e) => {
+            e.target.src = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=400&h=300';
+          }}
         />
       ) : (
         <div className="w-24 h-24 bg-gray-200 border-2 border-dashed rounded-xl" />

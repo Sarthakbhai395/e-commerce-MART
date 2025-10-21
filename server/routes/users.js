@@ -5,7 +5,9 @@ const {
   createUser,
   updateUser,
   deleteUser,
-  updateProfile
+  updateProfile,
+  blockUser,
+  unblockUser
 } = require('../controllers/userController');
 
 const {
@@ -35,6 +37,12 @@ router.route('/admin/:id')
   .get(getUser)
   .put(updateUser)
   .delete(deleteUser);
+
+router.route('/admin/:id/block')
+  .put(blockUser);
+
+router.route('/admin/:id/unblock')
+  .put(unblockUser);
 
 // User profile route (protected but no admin required)
 router.route('/profile')

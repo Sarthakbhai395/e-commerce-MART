@@ -2,7 +2,8 @@ const express = require('express');
 const { 
   getSellerContactMessages, 
   sendContactResponse,
-  getSellerContactResponses
+  getSellerContactResponses,
+  deleteContactMessage
 } = require('../controllers/sellerContactController');
 
 const router = express.Router();
@@ -18,5 +19,9 @@ router.route('/:id/response')
 
 router.route('/responses')
   .get(protect, authorize('seller'), getSellerContactResponses);
+
+// Add delete route
+router.route('/:id')
+  .delete(protect, authorize('seller'), deleteContactMessage);
 
 module.exports = router;

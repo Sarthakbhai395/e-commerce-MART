@@ -22,42 +22,26 @@ app.use(helmet());
 app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-app.use(cors({
-  origin: '*',
-}));
 
+// Configure CORS with specific origins
+const corsOptions = {
+  origin: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175'],
+  credentials: true,
+  optionsSuccessStatus: 200
+};
 
-
-// Serve static files from 'uploads' folder with proper CORS headers
-// app.use(
-//   '/uploads',
-//   (req, res, next) => {
-//     res.header('Access-Control-Allow-Origin', 'http://localhost:5173/*');
-//     res.header('Access-Control-Allow-Methods', '*');
-//     res.header('Access-Control-Allow-Headers', '*');
-//     next();
-//   },
-//   express.static(path.join(__dirname, 'public', 'uploads'))
-// );
-
+app.use(cors(corsOptions));
 
 app.use(
   '/uploads',
-  cors({
-    origin: 'http://localhost:5173',
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  }),
+  cors(corsOptions),
   (req, res, next) => {
-    res.set('Cross-Origin-Resource-Policy', 'cross-origin'); //  important for Chrome
-    res.set('Cache-Control', 'no-store'); // prevent 304 cache issues
+    res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.set('Cache-Control', 'no-store');
     next();
   },
   express.static(path.join(__dirname, 'public', 'uploads'))
 );
-
-
-// Serve static files from the public directory (uploads folder)
-// app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
 
 // Mount routers
 app.use('/api/auth', require('./routes/auth'));
@@ -66,6 +50,8 @@ app.use('/api/products', require('./routes/products'));
 app.use('/api/contact', require('./routes/contact'));
 app.use('/api/payment', require('./routes/payment'));
 app.use('/api/seller/contact', require('./routes/sellerContact'));
+app.use('/api/activities', require('./routes/activities'));
+app.use('/api/otp', require('./routes/otp')); // Add OTP routes
 
 // Error handler
 app.use(errorHandler);
@@ -84,4 +70,3 @@ process.on('unhandledRejection', (err, promise) => {
     process.exit(1);
   });
 });
-

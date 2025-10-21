@@ -26,7 +26,7 @@ const About = () => {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-white">
       {/* Hero Section */}
       <div className="relative h-screen overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-gray-900/95 via-gray-800/90 to-gray-900/95 z-10"></div>
+        <div className="absolute inset-0 bg-gradient-to-br from-gray-900/90 via-gray-800/80 to-gray-900/90 z-10"></div>
         <motion.img 
           src="https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1920&h=1080&fit=crop&q=80" 
           alt="E-commerce Shopping" 
@@ -42,7 +42,7 @@ const About = () => {
           transition={{ duration: 1, delay: 0.3 }}
         >
           <motion.h1 
-            className="text-6xl md:text-7xl font-bold text-center mb-6 tracking-tight"
+            className="text-5xl md:text-6xl lg:text-7xl font-bold text-center mb-6 tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-500"
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.5 }}
@@ -50,7 +50,7 @@ const About = () => {
             About Akario Mart
           </motion.h1>
           <motion.p 
-            className="text-2xl md:text-3xl text-center text-gray-200 font-light"
+            className="text-xl md:text-2xl text-center text-gray-200 font-light max-w-3xl"
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.7 }}
@@ -58,24 +58,22 @@ const About = () => {
             Your trusted partner in online shopping
           </motion.p>
           <motion.div 
-            className="mt-12 flex gap-4"
+            className="mt-12 flex flex-wrap justify-center gap-8"
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.9 }}
           >
-            <div className="text-center px-6">
-              <div className="text-4xl font-bold">10K+</div>
-              <div className="text-gray-300 text-sm">Products</div>
+            <div className="text-center px-6 py-4 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20">
+              <div className="text-4xl font-bold text-blue-300">10K+</div>
+              <div className="text-gray-300 text-sm mt-1">Products</div>
             </div>
-            <div className="w-px bg-gray-600"></div>
-            <div className="text-center px-6">
-              <div className="text-4xl font-bold">50K+</div>
-              <div className="text-gray-300 text-sm">Customers</div>
+            <div className="text-center px-6 py-4 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20">
+              <div className="text-4xl font-bold text-purple-300">50K+</div>
+              <div className="text-gray-300 text-sm mt-1">Customers</div>
             </div>
-            <div className="w-px bg-gray-600"></div>
-            <div className="text-center px-6">
-              <div className="text-4xl font-bold">500+</div>
-              <div className="text-gray-300 text-sm">Brands</div>
+            <div className="text-center px-6 py-4 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20">
+              <div className="text-4xl font-bold text-green-300">500+</div>
+              <div className="text-gray-300 text-sm mt-1">Brands</div>
             </div>
           </motion.div>
         </motion.div>
@@ -94,7 +92,7 @@ const About = () => {
             <div>
               <div className="flex items-center mb-6">
                 <div className="w-2 h-16 bg-gradient-to-b from-blue-600 to-purple-600 mr-4 rounded-full"></div>
-                <h2 className="text-4xl md:text-5xl font-bold text-gray-800">Our Story</h2>
+                <h2 className="text-3xl md:text-4xl font-bold text-gray-800">Our Story</h2>
               </div>
               <p className="text-gray-700 text-lg leading-relaxed mb-6">
                 Akario Mart is a leading e-commerce platform in India, dedicated to providing customers with 
@@ -135,7 +133,7 @@ const About = () => {
           viewport={{ once: true, margin: "-100px" }}
         >
           <motion.div 
-            className="bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-200 group"
+            className="bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-200 group hover:shadow-3xl transition-all duration-500"
             variants={item}
             whileHover={{ y: -10 }}
             transition={{ duration: 0.3 }}
@@ -165,7 +163,7 @@ const About = () => {
           </motion.div>
           
           <motion.div 
-            className="bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-200 group"
+            className="bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-200 group hover:shadow-3xl transition-all duration-500"
             variants={item}
             whileHover={{ y: -10 }}
             transition={{ duration: 0.3 }}
@@ -205,14 +203,14 @@ const About = () => {
           variants={fadeInUp}
         >
           <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-800 mb-4">Our Core Values</h2>
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-4">Our Core Values</h2>
             <p className="text-gray-600 text-xl max-w-3xl mx-auto">
               The principles that guide everything we do at Akario Mart
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <motion.div 
-              className="bg-gradient-to-br from-blue-50 to-white p-10 rounded-3xl shadow-lg border border-blue-100 hover:shadow-2xl transition-shadow duration-300"
+              className="bg-gradient-to-br from-blue-50 to-white p-10 rounded-3xl shadow-lg border border-blue-100 hover:shadow-2xl transition-all duration-500 hover:-translate-y-2"
               whileHover={{ scale: 1.05 }}
             >
               <div className="w-20 h-20 bg-gradient-to-br from-blue-600 to-blue-400 rounded-2xl flex items-center justify-center mb-6 shadow-lg">
@@ -227,7 +225,7 @@ const About = () => {
             </motion.div>
 
             <motion.div 
-              className="bg-gradient-to-br from-purple-50 to-white p-10 rounded-3xl shadow-lg border border-purple-100 hover:shadow-2xl transition-shadow duration-300"
+              className="bg-gradient-to-br from-purple-50 to-white p-10 rounded-3xl shadow-lg border border-purple-100 hover:shadow-2xl transition-all duration-500 hover:-translate-y-2"
               whileHover={{ scale: 1.05 }}
             >
               <div className="w-20 h-20 bg-gradient-to-br from-purple-600 to-purple-400 rounded-2xl flex items-center justify-center mb-6 shadow-lg">
@@ -242,7 +240,7 @@ const About = () => {
             </motion.div>
 
             <motion.div 
-              className="bg-gradient-to-br from-green-50 to-white p-10 rounded-3xl shadow-lg border border-green-100 hover:shadow-2xl transition-shadow duration-300"
+              className="bg-gradient-to-br from-green-50 to-white p-10 rounded-3xl shadow-lg border border-green-100 hover:shadow-2xl transition-all duration-500 hover:-translate-y-2"
               whileHover={{ scale: 1.05 }}
             >
               <div className="w-20 h-20 bg-gradient-to-br from-green-600 to-green-400 rounded-2xl flex items-center justify-center mb-6 shadow-lg">
@@ -267,12 +265,12 @@ const About = () => {
           transition={{ duration: 0.8 }}
         >
           <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold mb-4">Why Choose Akario Mart?</h2>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">Why Choose Akario Mart?</h2>
             <p className="text-gray-300 text-xl">Experience the difference with our premium services</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <motion.div 
-              className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10 hover:bg-white/10 transition-all duration-300"
+              className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10 hover:bg-white/10 transition-all duration-300 hover:border-white/30"
               whileHover={{ scale: 1.05, borderColor: 'rgba(255,255,255,0.3)' }}
             >
               <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center mb-4">
@@ -287,7 +285,7 @@ const About = () => {
             </motion.div>
 
             <motion.div 
-              className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10 hover:bg-white/10 transition-all duration-300"
+              className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10 hover:bg-white/10 transition-all duration-300 hover:border-white/30"
               whileHover={{ scale: 1.05, borderColor: 'rgba(255,255,255,0.3)' }}
             >
               <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center mb-4">
@@ -302,7 +300,7 @@ const About = () => {
             </motion.div>
 
             <motion.div 
-              className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10 hover:bg-white/10 transition-all duration-300"
+              className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10 hover:bg-white/10 transition-all duration-300 hover:border-white/30"
               whileHover={{ scale: 1.05, borderColor: 'rgba(255,255,255,0.3)' }}
             >
               <div className="w-14 h-14 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center mb-4">
@@ -317,7 +315,7 @@ const About = () => {
             </motion.div>
 
             <motion.div 
-              className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10 hover:bg-white/10 transition-all duration-300"
+              className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10 hover:bg-white/10 transition-all duration-300 hover:border-white/30"
               whileHover={{ scale: 1.05, borderColor: 'rgba(255,255,255,0.3)' }}
             >
               <div className="w-14 h-14 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-xl flex items-center justify-center mb-4">
@@ -332,7 +330,7 @@ const About = () => {
             </motion.div>
 
             <motion.div 
-              className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10 hover:bg-white/10 transition-all duration-300"
+              className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10 hover:bg-white/10 transition-all duration-300 hover:border-white/30"
               whileHover={{ scale: 1.05, borderColor: 'rgba(255,255,255,0.3)' }}
             >
               <div className="w-14 h-14 bg-gradient-to-br from-red-500 to-red-600 rounded-xl flex items-center justify-center mb-4">
@@ -347,7 +345,7 @@ const About = () => {
             </motion.div>
 
             <motion.div 
-              className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10 hover:bg-white/10 transition-all duration-300"
+              className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10 hover:bg-white/10 transition-all duration-300 hover:border-white/30"
               whileHover={{ scale: 1.05, borderColor: 'rgba(255,255,255,0.3)' }}
             >
               <div className="w-14 h-14 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl flex items-center justify-center mb-4">
@@ -385,7 +383,7 @@ const About = () => {
               <div className="absolute inset-0 bg-gradient-to-t from-gray-900/60 to-transparent"></div>
             </motion.div>
             <div>
-              <h2 className="text-4xl md:text-5xl font-bold text-gray-800 mb-6">Trusted by Thousands</h2>
+              <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-6">Trusted by Thousands</h2>
               <p className="text-gray-700 text-lg leading-relaxed mb-6">
                 We take pride in being one of the most trusted e-commerce platforms in India. Our commitment 
                 to authenticity, quality, and customer satisfaction has earned us the loyalty of over 50,000 
@@ -396,11 +394,11 @@ const About = () => {
                 verified sellers and authorized brand partners. Your trust is our greatest achievement.
               </p>
               <div className="grid grid-cols-2 gap-6">
-                <div className="bg-gradient-to-br from-blue-50 to-white p-6 rounded-2xl border border-blue-100">
+                <div className="bg-gradient-to-br from-blue-50 to-white p-6 rounded-2xl border border-blue-100 shadow-sm">
                   <div className="text-4xl font-bold text-blue-600 mb-2">99%</div>
                   <div className="text-gray-700">Customer Satisfaction</div>
                 </div>
-                <div className="bg-gradient-to-br from-purple-50 to-white p-6 rounded-2xl border border-purple-100">
+                <div className="bg-gradient-to-br from-purple-50 to-white p-6 rounded-2xl border border-purple-100 shadow-sm">
                   <div className="text-4xl font-bold text-purple-600 mb-2">4.8/5</div>
                   <div className="text-gray-700">Average Rating</div>
                 </div>
@@ -417,7 +415,7 @@ const About = () => {
           viewport={{ once: true, margin: "-100px" }}
           transition={{ duration: 0.8 }}
         >
-          <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+          <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
             Join the Akario Mart Family
           </h2>
           <p className="text-xl text-blue-100 max-w-3xl mx-auto leading-relaxed">

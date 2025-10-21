@@ -10,7 +10,7 @@ import RestrictedAccess from '../../components/RestrictedAccess'
 
 const Cart = () => {
   const navigate = useNavigate()
-  const { cartItems, updateQuantity, removeFromCart, getCartTotal, clearCart } = useCart()
+  const { cartItems, updateQuantity, removeFromCart, getCartTotal, clearCart, loading } = useCart()
   const { user } = useAuth()
   const { addNotification } = useNotification()
 
@@ -46,6 +46,21 @@ const Cart = () => {
   const item = {
     hidden: { opacity: 0, y: 20 },
     show: { opacity: 1, y: 0 }
+  }
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-light-grey flex items-center justify-center">
+        <motion.div 
+          className="text-2xl text-dark-grey"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+        >
+          Loading your cart...
+        </motion.div>
+      </div>
+    )
   }
 
   return (

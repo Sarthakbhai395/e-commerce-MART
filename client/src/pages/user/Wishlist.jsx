@@ -11,7 +11,7 @@ const Wishlist = () => {
   const { wishlistItems, removeFromWishlist } = useWishlist()
   const { addToCart } = useCart()
   const { user } = useAuth()
-  const { addNotification } = useNotification()
+  const { addModalNotification } = useNotification()
 
   // Check if user is admin or seller
   if (user && (user.role === 'admin' || user.role === 'seller')) {
@@ -22,7 +22,7 @@ const Wishlist = () => {
     // Add the actual product to cart
     try {
       await addToCart(product)
-      addNotification(`${product.name} added to your cart!`, 'success')
+      // Notification is now handled in CartContext with modal notification
     } catch (error) {
       // Error will be handled by the CartContext
     }

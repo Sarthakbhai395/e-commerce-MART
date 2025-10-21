@@ -20,6 +20,7 @@ import Test from './pages/Test'
 
 // Components
 import Navbar from './components/Navbar'
+import ProtectedRoute from './components/ProtectedRoute'
 
 // Contexts
 import { AuthProvider } from './contexts/AuthContext'
@@ -37,24 +38,68 @@ function App() {
               v7_startTransition: true,
               v7_relativeSplatPath: true,
             }}>
-              <div className="App">
+              <div className="App min-h-screen flex flex-col">
                 <Navbar />
-                <Routes>
-                  <Route path="/" element={<Home />} />
-                  <Route path="/about" element={<About />} />
-                  <Route path="/contact" element={<Contact />} />
-                  <Route path="/test" element={<Test />} />
-                  <Route path="/login" element={<Login />} />
-                  <Route path="/register" element={<Register />} />
-                  <Route path="/products" element={<Products />} />
-                  <Route path="/product/:id" element={<ProductDetail />} />
-                  <Route path="/user/dashboard" element={<UserDashboard />} />
-                  <Route path="/user/cart" element={<Cart />} />
-                  <Route path="/user/wishlist" element={<Wishlist />} />
-                  <Route path="/checkout" element={<Checkout />} />
-                  <Route path="/admin/dashboard" element={<AdminDashboard />} />
-                  <Route path="/seller/dashboard" element={<SellerDashboard />} />
-                </Routes>
+                <main className="flex-grow">
+                  <Routes>
+                    <Route path="/" element={<Home />} />
+                    <Route path="/about" element={<About />} />
+                    <Route path="/contact" element={<Contact />} />
+                    <Route path="/test" element={<Test />} />
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/register" element={<Register />} />
+                    <Route path="/products" element={<Products />} />
+                    <Route path="/product/:id" element={<ProductDetail />} />
+                    <Route 
+                      path="/user/dashboard" 
+                      element={
+                        <ProtectedRoute allowedRoles={['user']}>
+                          <UserDashboard />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    <Route 
+                      path="/user/cart" 
+                      element={
+                        <ProtectedRoute allowedRoles={['user']}>
+                          <Cart />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    <Route 
+                      path="/user/wishlist" 
+                      element={
+                        <ProtectedRoute allowedRoles={['user']}>
+                          <Wishlist />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    <Route 
+                      path="/checkout" 
+                      element={
+                        <ProtectedRoute allowedRoles={['user']}>
+                          <Checkout />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    <Route 
+                      path="/admin/dashboard" 
+                      element={
+                        <ProtectedRoute allowedRoles={['admin']}>
+                          <AdminDashboard />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    <Route 
+                      path="/seller/dashboard" 
+                      element={
+                        <ProtectedRoute allowedRoles={['seller']}>
+                          <SellerDashboard />
+                        </ProtectedRoute>
+                      } 
+                    />
+                  </Routes>
+                </main>
               </div>
             </Router>
           </NotificationProvider>

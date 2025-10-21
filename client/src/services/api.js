@@ -2,9 +2,23 @@
 
 const API_BASE_URL = 'http://localhost:5000/api'
 
+// Simple in-memory cache
+const apiCache = new Map()
+const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
+
 // Helper function to make API requests
 const apiRequest = async (url, options = {}) => {
   try {
+    // Check if we have a cached response
+    const cacheKey = `${options.method || 'GET'}:${url}`
+    const cached = apiCache.get(cacheKey)
+    
+    // If we have a valid cached response, return it
+    if (cached && Date.now() - cached.timestamp < CACHE_DURATION && options.method !== 'POST' && options.method !== 'PUT' && options.method !== 'DELETE') {
+      console.log(`Returning cached response for ${url}`)
+      return cached.data
+    }
+    
     const response = await fetch(`${API_BASE_URL}${url}`, {
       headers: {
         'Content-Type': 'application/json',
@@ -14,16 +28,39 @@ const apiRequest = async (url, options = {}) => {
     })
     
     const data = await response.json()
-    return { success: response.ok, ...data }
+    const result = { success: response.ok, ...data }
+    
+    // Cache successful GET requests
+    if (response.ok && (!options.method || options.method === 'GET')) {
+      apiCache.set(cacheKey, {
+        data: result,
+        timestamp: Date.now()
+      })
+    }
+    
+    return result
   } catch (error) {
     console.error(`API request failed for ${url}:`, error);
     return { success: false, message: 'Network error' }
   }
 }
 
+// Clear cache for a specific URL
+export const clearCache = (url, method = 'GET') => {
+  const cacheKey = `${method}:${url}`
+  apiCache.delete(cacheKey)
+}
+
+// Clear all cache
+export const clearAllCache = () => {
+  apiCache.clear()
+}
+
 // Auth API
 export const authAPI = {
   login: async (email, password, role) => {
+    // Clear cache on login
+    clearAllCache()
     return apiRequest('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password, role })
@@ -49,6 +86,8 @@ export const productAPI = {
   },
 
   createProduct: async (productData, token) => {
+    // Clear cache when creating a product
+    clearCache('/products', 'GET')
     return apiRequest('/products', {
       method: 'POST',
       headers: {
@@ -60,6 +99,9 @@ export const productAPI = {
   },
 
   updateProduct: async (id, productData, token) => {
+    // Clear cache when updating a product
+    clearCache('/products', 'GET')
+    clearCache(`/products/${id}`, 'GET')
     return apiRequest(`/products/${id}`, {
       method: 'PUT',
       headers: {
@@ -71,6 +113,9 @@ export const productAPI = {
   },
 
   deleteProduct: async (id, token) => {
+    // Clear cache when deleting a product
+    clearCache('/products', 'GET')
+    clearCache(`/products/${id}`, 'GET')
     return apiRequest(`/products/${id}`, {
       method: 'DELETE',
       headers: {
@@ -82,6 +127,10 @@ export const productAPI = {
   // Upload product photo
   uploadProductPhoto: async (id, formData, token) => {
     try {
+      // Clear cache when uploading a photo
+      clearCache('/products', 'GET')
+      clearCache(`/products/${id}`, 'GET')
+      
       const response = await fetch(`${API_BASE_URL}/products/${id}/photo`, {
         method: 'PUT',
         headers: {
@@ -102,7 +151,15 @@ export const productAPI = {
 // User API
 export const userAPI = {
   getUsers: async (token) => {
-    return apiRequest('/users', {
+    return apiRequest('/users/admin', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    })
+  },
+
+  getSellers: async (token) => {
+    return apiRequest('/users/admin', {
       headers: {
         'Authorization': `Bearer ${token}`
       }
@@ -110,8 +167,26 @@ export const userAPI = {
   },
 
   deleteUser: async (id, token) => {
-    return apiRequest(`/users/${id}`, {
+    return apiRequest(`/users/admin/${id}`, {
       method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    })
+  },
+
+  blockUser: async (id, token) => {
+    return apiRequest(`/users/admin/${id}/block`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    })
+  },
+
+  unblockUser: async (id, token) => {
+    return apiRequest(`/users/admin/${id}/unblock`, {
+      method: 'PUT',
       headers: {
         'Authorization': `Bearer ${token}`
       }
@@ -128,6 +203,8 @@ export const userAPI = {
   },
 
   addToCart: async (productId, quantity, token) => {
+    // Clear cart cache when adding to cart
+    clearCache('/users/cart', 'GET')
     return apiRequest('/users/cart', {
       method: 'POST',
       headers: {
@@ -139,6 +216,8 @@ export const userAPI = {
   },
 
   updateCart: async (productId, quantity, token) => {
+    // Clear cart cache when updating cart
+    clearCache('/users/cart', 'GET')
     return apiRequest('/users/cart', {
       method: 'PUT',
       headers: {
@@ -150,6 +229,8 @@ export const userAPI = {
   },
 
   removeFromCart: async (productId, token) => {
+    // Clear cart cache when removing from cart
+    clearCache('/users/cart', 'GET')
     return apiRequest(`/users/cart/${productId}`, {
       method: 'DELETE',
       headers: {
@@ -159,6 +240,8 @@ export const userAPI = {
   },
 
   clearCart: async (token) => {
+    // Clear cart cache when clearing cart
+    clearCache('/users/cart', 'GET')
     return apiRequest('/users/cart', {
       method: 'DELETE',
       headers: {
@@ -177,6 +260,8 @@ export const userAPI = {
   },
 
   addToWishlist: async (productId, token) => {
+    // Clear wishlist cache when adding to wishlist
+    clearCache('/users/wishlist', 'GET')
     return apiRequest('/users/wishlist', {
       method: 'POST',
       headers: {
@@ -188,6 +273,8 @@ export const userAPI = {
   },
 
   removeFromWishlist: async (productId, token) => {
+    // Clear wishlist cache when removing from wishlist
+    clearCache('/users/wishlist', 'GET')
     return apiRequest(`/users/wishlist/${productId}`, {
       method: 'DELETE',
       headers: {
@@ -197,6 +284,8 @@ export const userAPI = {
   },
 
   clearWishlist: async (token) => {
+    // Clear wishlist cache when clearing wishlist
+    clearCache('/users/wishlist', 'GET')
     return apiRequest('/users/wishlist', {
       method: 'DELETE',
       headers: {
@@ -214,6 +303,17 @@ export const userAPI = {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(userData)
+    })
+  }
+}
+
+// Activity API
+export const activityAPI = {
+  getActivities: async (token) => {
+    return apiRequest('/activities', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
     })
   }
 }
@@ -273,6 +373,16 @@ export const sellerContactAPI = {
         'Authorization': `Bearer ${token}`
       }
     })
+  },
+  
+  // Added delete contact message functionality
+  deleteContactMessage: async (contactId, token) => {
+    return apiRequest(`/seller/contact/${contactId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    })
   }
 }
 
@@ -280,6 +390,9 @@ export default {
   authAPI,
   productAPI,
   userAPI,
+  activityAPI,
   contactAPI,
-  sellerContactAPI
+  sellerContactAPI,
+  clearCache,
+  clearAllCache
 }

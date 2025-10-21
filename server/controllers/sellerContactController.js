@@ -5,9 +5,11 @@ const Contact = require('../models/Contact');
 // @access  Private (Seller only)
 exports.getSellerContactMessages = async (req, res, next) => {
   try {
-    // Get all contact messages that don't have a user (meaning they're original messages from users)
+    // Get all contact messages that are original messages from users (not seller responses)
     // and populate both the user and response fields
-    const contacts = await Contact.find({ response: { $exists: false } })
+    const contacts = await Contact.find({ 
+      name: { $not: { $regex: 'Seller Response', $options: 'i' } } 
+    })
       .populate('user', 'name email')
       .populate('response')
       .sort({ createdAt: -1 });
@@ -103,6 +105,54 @@ exports.getSellerContactResponses = async (req, res, next) => {
     });
   } catch (err) {
     console.error('Error fetching seller responses:', err);
+    res.status(500).json({
+      success: false,
+      error: 'Server Error'
+    });
+  }
+};
+
+// @desc    Delete a contact message
+// @route   DELETE /api/seller/contact/:id
+// @access  Private (Seller only)
+exports.deleteContactMessage = async (req, res, next) => {
+  try {
+    const contactId = req.params.id;
+
+    // Find the contact message
+    const contact = await Contact.findById(contactId);
+
+    if (!contact) {
+      return res.status(404).json({
+        success: false,
+        error: 'Contact message not found'
+      });
+    }
+
+    // Check if it's a response message
+    if (contact.name.includes('Seller Response')) {
+      // If it's a response, we need to find the original message and remove the response reference
+      const originalMessage = await Contact.findOne({ response: contactId });
+      if (originalMessage) {
+        originalMessage.response = undefined;
+        await originalMessage.save();
+      }
+    } else {
+      // If it's an original message and has a response, delete the response as well
+      if (contact.response) {
+        await Contact.findByIdAndDelete(contact.response);
+      }
+    }
+
+    // Delete the contact message
+    await Contact.findByIdAndDelete(contactId);
+
+    res.status(200).json({
+      success: true,
+      data: {}
+    });
+  } catch (err) {
+    console.error('Error deleting contact message:', err);
     res.status(500).json({
       success: false,
       error: 'Server Error'

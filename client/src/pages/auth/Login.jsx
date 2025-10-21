@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useAuthHook } from '../../hooks/useAuth'
 
@@ -8,7 +8,11 @@ const Login = () => {
   const [password, setPassword] = useState('')
   const [role, setRole] = useState('user')
   const navigate = useNavigate()
+  const location = useLocation()
   const { handleLogin, loading, error } = useAuthHook()
+
+  // Get the redirect message if it exists
+  const redirectMessage = location.state?.message
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -16,8 +20,13 @@ const Login = () => {
     const result = await handleLogin(email, password, role)
     
     if (result.success) {
-      // Redirect based on role
-      if (role === 'admin') {
+      // Check if there's a redirect path
+      const from = location.state?.from?.pathname || '/'
+      
+      // Redirect based on role or to the attempted location
+      if (from !== '/' && from !== '/login') {
+        navigate(from)
+      } else if (role === 'admin') {
         navigate('/admin/dashboard')
       } else if (role === 'seller') {
         navigate('/seller/dashboard')
@@ -53,6 +62,18 @@ const Login = () => {
             Welcome back to Akario Mart
           </p>
         </motion.div>
+        
+        {redirectMessage && (
+          <motion.div 
+            className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-lg"
+            role="alert"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.3 }}
+          >
+            <span className="block sm:inline">{redirectMessage}</span>
+          </motion.div>
+        )}
         
         {error && (
           <motion.div 

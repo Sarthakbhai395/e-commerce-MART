@@ -1,5 +1,6 @@
 const Product = require('../models/Product');
 const User = require('../models/User');
+const Activity = require('../models/Activity');
 const path = require('path');
 const fs = require('fs');
 
@@ -61,6 +62,14 @@ exports.createProduct = async (req, res, next) => {
 
     const product = await Product.create(req.body);
     
+    // Log activity
+    await Activity.create({
+      admin: req.user.id,
+      action: 'CREATE_PRODUCT',
+      target: product._id,
+      targetType: 'PRODUCT'
+    });
+    
     console.log('Product created:', product); // Debug log
 
     res.status(201).json({
@@ -110,6 +119,14 @@ exports.updateProduct = async (req, res, next) => {
       new: true,
       runValidators: true
     });
+    
+    // Log activity
+    await Activity.create({
+      admin: req.user.id,
+      action: 'UPDATE_PRODUCT',
+      target: product._id,
+      targetType: 'PRODUCT'
+    });
 
     res.status(200).json({
       success: true,
@@ -155,6 +172,14 @@ exports.deleteProduct = async (req, res, next) => {
 
     // Use deleteOne() instead of remove() for newer Mongoose versions
     await product.deleteOne();
+    
+    // Log activity
+    await Activity.create({
+      admin: req.user.id,
+      action: 'DELETE_PRODUCT',
+      target: product._id,
+      targetType: 'PRODUCT'
+    });
 
     res.status(200).json({
       success: true,
@@ -235,6 +260,14 @@ exports.productPhotoUpload = async (req, res, next) => {
     // Save the image path with /uploads/ prefix
     const imagePath = `/uploads/${fileName}`;
     await Product.findByIdAndUpdate(req.params.id, { image: imagePath });
+    
+    // Log activity
+    await Activity.create({
+      admin: req.user.id,
+      action: 'UPDATE_PRODUCT',
+      target: product._id,
+      targetType: 'PRODUCT'
+    });
 
     res.status(200).json({
       success: true,

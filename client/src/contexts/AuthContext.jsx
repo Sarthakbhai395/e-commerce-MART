@@ -13,8 +13,17 @@ export const AuthProvider = ({ children }) => {
     const savedToken = localStorage.getItem('token')
     
     if (savedUser && savedAuthState === 'true' && savedToken) {
-      setUser(JSON.parse(savedUser))
-      setIsAuthenticated(true)
+      try {
+        const parsedUser = JSON.parse(savedUser)
+        setUser(parsedUser)
+        setIsAuthenticated(true)
+      } catch (e) {
+        console.error('Error parsing saved user data:', e)
+        // Clear invalid data
+        localStorage.removeItem('user')
+        localStorage.removeItem('isAuthenticated')
+        localStorage.removeItem('token')
+      }
     }
   }, [])
 
@@ -36,11 +45,21 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('token')
   }
 
+  // Function to check if user is authenticated
+  const checkAuthStatus = () => {
+    const savedUser = localStorage.getItem('user')
+    const savedAuthState = localStorage.getItem('isAuthenticated')
+    const savedToken = localStorage.getItem('token')
+    
+    return savedUser && savedAuthState === 'true' && savedToken
+  }
+
   const value = {
     user,
     isAuthenticated,
     login,
-    logout
+    logout,
+    checkAuthStatus
   }
 
   return (

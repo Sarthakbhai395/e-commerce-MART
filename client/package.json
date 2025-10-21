@@ -13,10 +13,10 @@
     "@fontsource/playfair-display": "^5.2.8",
     "framer-motion": "^12.23.24",
     "lucide-react": "^0.546.0",
-    "razorpay": "^2.9.6",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-router-dom": "^6.8.0"
+    "react-router-dom": "^6.8.0",
+    "recharts": "^3.3.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.0.0",

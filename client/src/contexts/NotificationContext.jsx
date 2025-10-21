@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import Notification from '../components/Notification';
+import ModalNotification from '../components/ModalNotification';
 
 const NotificationContext = createContext();
 
@@ -8,6 +9,7 @@ let nextId = 0;
 
 export const NotificationProvider = ({ children }) => {
   const [notifications, setNotifications] = useState([]);
+  const [modalNotification, setModalNotification] = useState(null);
 
   const addNotification = (message, type = 'success') => {
     const id = nextId++;
@@ -21,14 +23,22 @@ export const NotificationProvider = ({ children }) => {
     }, 3000);
   };
 
+  const addModalNotification = (title, message, type = 'success') => {
+    setModalNotification({ title, message, type, isOpen: true });
+  };
+
   const removeNotification = (id) => {
     setNotifications(prev => prev.filter(notification => notification.id !== id));
   };
 
+  const closeModalNotification = () => {
+    setModalNotification(prev => ({ ...prev, isOpen: false }));
+  };
+
   return (
-    <NotificationContext.Provider value={{ addNotification }}>
+    <NotificationContext.Provider value={{ addNotification, addModalNotification }}>
       {children}
-      <div className="fixed top-4 right-4 z-50 space-y-2">
+      <div className="fixed top-20 right-4 z-[9999] space-y-3">
         <AnimatePresence>
           {notifications.map(({ id, message, type }) => (
             <Notification
@@ -40,6 +50,15 @@ export const NotificationProvider = ({ children }) => {
           ))}
         </AnimatePresence>
       </div>
+      {modalNotification && (
+        <ModalNotification
+          isOpen={modalNotification.isOpen}
+          onClose={closeModalNotification}
+          title={modalNotification.title}
+          message={modalNotification.message}
+          type={modalNotification.type}
+        />
+      )}
     </NotificationContext.Provider>
   );
 };

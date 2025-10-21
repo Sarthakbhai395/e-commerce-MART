@@ -3,8 +3,11 @@ import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../../contexts/AuthContext'
 import { productAPI, sellerContactAPI } from '../../services/api'
+import { formatCurrency } from '../../utils/format'
+import Sidebar from './components/Sidebar'
 
 const SellerDashboard = () => {
+  const [activeSection, setActiveSection] = useState('dashboard')
   const [showAddProduct, setShowAddProduct] = useState(false)
   const [showEditProduct, setShowEditProduct] = useState(false)
   const [showContactQueries, setShowContactQueries] = useState(false)
@@ -32,8 +35,58 @@ const SellerDashboard = () => {
   const [contactResponses, setContactResponses] = useState([])
   const [contactLoading, setContactLoading] = useState(false)
   const [responseLoading, setResponseLoading] = useState(false)
+  const [loadingUserData, setLoadingUserData] = useState(true) // Add this state
   const navigate = useNavigate()
   const { user } = useAuth()
+
+  // Check for user data on component mount
+  useEffect(() => {
+    // Check if user is already in context
+    if (user) {
+      setLoadingUserData(false)
+    } else {
+      // Check localStorage as backup
+      const savedUser = localStorage.getItem('user')
+      if (savedUser) {
+        try {
+          const parsedUser = JSON.parse(savedUser)
+          setLoadingUserData(false)
+        } catch (e) {
+          console.error('Error parsing saved user data:', e)
+          setLoadingUserData(false)
+        }
+      } else {
+        setLoadingUserData(false)
+      }
+    }
+  }, [user])
+
+  // Redirect if user is not authenticated or not a seller
+  useEffect(() => {
+    // Check if we have user data
+    if (user === null) {
+      // Check localStorage as backup
+      const savedUser = localStorage.getItem('user')
+      if (savedUser) {
+        try {
+          const parsedUser = JSON.parse(savedUser)
+          if (parsedUser.role !== 'seller') {
+            navigate('/login')
+          }
+        } catch (e) {
+          console.error('Error parsing saved user data:', e)
+          navigate('/login')
+        }
+      }
+      // If no user data and not loading, redirect to login
+      // But don't redirect if we're already trying to load user data
+      else if (!loadingUserData) {
+        navigate('/login')
+      }
+    } else if (user && user.role !== 'seller') {
+      navigate('/login')
+    }
+  }, [user, navigate, loadingUserData])
 
   // Fetch seller's products
   useEffect(() => {
@@ -93,21 +146,35 @@ const SellerDashboard = () => {
   const fetchContactQueries = async () => {
     try {
       setContactLoading(true)
+      setError('')
+      setSuccess('')
+      
       const token = localStorage.getItem('token')
+      if (!token) {
+        throw new Error('No authentication token found')
+      }
+      
       const response = await sellerContactAPI.getContactMessages(token)
       
       if (response.success) {
         setContactQueries(response.data)
       } else {
-        setError('Failed to fetch contact queries')
+        setError('Failed to fetch contact queries: ' + (response.error || 'Unknown error'))
       }
     } catch (err) {
-      setError('An error occurred while fetching contact queries')
+      setError('An error occurred while fetching contact queries: ' + err.message)
       console.error(err)
     } finally {
       setContactLoading(false)
     }
   }
+
+  // Fetch contact queries when the queries section is opened
+  useEffect(() => {
+    if (activeSection === 'queries' && user && user.id) {
+      fetchContactQueries()
+    }
+  }, [activeSection, user])
 
   // Send response to contact query
   const sendContactResponse = async (e) => {
@@ -369,206 +436,380 @@ const SellerDashboard = () => {
     return null
   }
 
-  const container = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1
+  const renderContent = () => {
+    switch (activeSection) {
+      case 'products':
+        return (
+          <div className="bg-white rounded-xl shadow-lg p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-semibold text-gray-800">My Products</h2>
+              <button 
+                onClick={() => setShowAddProduct(true)}
+                className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 ease-in-out transform hover:scale-105"
+              >
+                Add Product
+              </button>
+            </div>
+            
+            {productsError && (
+              <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md">
+                {productsError}
+              </div>
+            )}
+            
+            {productsLoading ? (
+              <div className="text-center py-8">
+                <p className="text-gray-600">Loading your products...</p>
+              </div>
+            ) : products.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-gray-600">You haven't added any products yet.</p>
+                <button 
+                  onClick={() => setShowAddProduct(true)}
+                  className="mt-4 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 ease-in-out"
+                >
+                  Add Your First Product
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {products.map((product) => (
+                  <div 
+                    key={product._id} 
+                    className="border rounded-lg p-4 transition-transform duration-300 ease-in-out transform hover:-translate-y-1"
+                  >
+                    <div className="bg-gray-200 border-2 border-dashed rounded-xl w-full h-40 mb-4 overflow-hidden">
+                      <img 
+                        src={getProductImageUrl(product)} 
+                        alt={product.name} 
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <h3 className="font-semibold text-gray-800">{product.name}</h3>
+                    <p className="text-gray-600 text-sm capitalize">{product.category}</p>
+                    <div className="flex justify-between items-center mt-2">
+                      <span className="font-bold text-lg text-gray-800">
+                        {formatCurrency(product.discount ? (product.price * (1 - product.discount / 100)) : product.price)}
+                      </span>
+                      {product.discount > 0 && (
+                        <span className="text-sm text-gray-500 line-through">
+                          {formatCurrency(product.price)}
+                        </span>
+                      )}
+                      <div className="flex space-x-2">
+                        <button 
+                          onClick={() => handleEditProduct(product)}
+                          className="text-blue-600 hover:text-blue-800 text-sm"
+                        >
+                          Edit
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteProduct(product._id)}
+                          className="text-red-600 hover:text-red-800 text-sm"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )
+      
+      case 'queries':
+        return (
+          <div className="bg-white rounded-xl shadow-lg p-6">
+            <h2 className="text-2xl font-semibold text-gray-800 mb-6">User Contact Queries</h2>
+            
+            {contactLoading ? (
+              <div className="text-center py-8">
+                <p className="text-gray-600">Loading contact queries...</p>
+              </div>
+            ) : error ? (
+              <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md">
+                {error}
+              </div>
+            ) : success ? (
+              <div className="mb-4 p-3 bg-green-100 text-green-700 rounded-md">
+                {success}
+              </div>
+            ) : contactQueries.length > 0 ? (
+              <div className="space-y-4">
+                {contactQueries.map((contact) => (
+                  <div 
+                    key={contact._id} 
+                    className="border border-gray-200 rounded-lg p-4 transition-all duration-300 hover:shadow-md"
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="flex items-center">
+                          <h3 className="font-semibold text-gray-800 text-lg">{contact.subject}</h3>
+                          <span className={`ml-3 px-2 py-1 text-xs rounded-full ${
+                            contact.response ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {contact.response ? 'Replied' : 'Pending'}
+                          </span>
+                        </div>
+                        <p className="text-gray-600 mt-2">{contact.message}</p>
+                      </div>
+                      <span className="text-sm text-gray-500 whitespace-nowrap ml-4">
+                        {new Date(contact.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                      <div>
+                        <span className="font-medium text-gray-700">Message ID:</span>
+                        <span className="ml-2 text-gray-600 font-mono">{contact._id.substring(0, 8)}...</span>
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-700">From:</span>
+                        <span className="ml-2 text-gray-600">{contact.name} ({contact.email})</span>
+                      </div>
+                    </div>
+                    
+                    {/* Seller Response */}
+                    {contact.response ? (
+                      <div className="mt-4 p-4 bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-lg">
+                        <div className="flex justify-between items-start">
+                          <h4 className="font-semibold text-purple-800 flex items-center">
+                            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                            </svg>
+                            Your Response
+                          </h4>
+                          <span className="text-sm text-purple-600">
+                            {new Date(contact.response.createdAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <div className="mt-3">
+                          <p className="text-purple-700">{contact.response.message}</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mt-4">
+                        <button 
+                          onClick={() => {
+                            setSelectedContact(contact)
+                            setShowResponseModal(true)
+                          }}
+                          className="bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-4 rounded-lg transition duration-300"
+                        >
+                          Respond to Query
+                        </button>
+                      </div>
+                    )}
+                    
+                    {/* Delete button */}
+                    <div className="mt-4">
+                      <button 
+                        onClick={() => handleDeleteContactMessage(contact._id)}
+                        className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition duration-300"
+                      >
+                        Delete Message
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <div className="flex justify-center mb-4">
+                  <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                  </svg>
+                </div>
+                <p className="text-gray-600">No contact queries received yet.</p>
+              </div>
+            )}
+          </div>
+        )
+      
+      default: // dashboard
+        return (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+              <div className="bg-white rounded-xl shadow-lg p-6 transition-transform duration-300 ease-in-out transform hover:-translate-y-1">
+                <div className="flex items-center mb-4">
+                  <div className="bg-blue-100 p-3 rounded-full mr-4">
+                    <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                    </svg>
+                  </div>
+                  <h2 className="text-2xl font-semibold text-gray-800">My Products</h2>
+                </div>
+                <p className="text-gray-600 mb-6">View and manage your products</p>
+                <button 
+                  onClick={() => setActiveSection('products')}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 ease-in-out transform hover:scale-105 w-full"
+                >
+                  View Products
+                </button>
+              </div>
+              
+              <div className="bg-white rounded-xl shadow-lg p-6 transition-transform duration-300 ease-in-out transform hover:-translate-y-1">
+                <div className="flex items-center mb-4">
+                  <div className="bg-purple-100 p-3 rounded-full mr-4">
+                    <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                    </svg>
+                  </div>
+                  <h2 className="text-2xl font-semibold text-gray-800">User Queries</h2>
+                </div>
+                <p className="text-gray-600 mb-6">View and respond to user contact queries</p>
+                <button 
+                  onClick={() => {
+                    setActiveSection('queries')
+                    fetchContactQueries()
+                  }}
+                  className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 ease-in-out transform hover:scale-105 w-full"
+                >
+                  View Queries
+                </button>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <h2 className="text-2xl font-semibold text-gray-800 mb-6">My Products</h2>
+              
+              {productsError && (
+                <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md">
+                  {productsError}
+                </div>
+              )}
+              
+              {productsLoading ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-600">Loading your products...</p>
+                </div>
+              ) : products.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-600">You haven't added any products yet.</p>
+                  <button 
+                    onClick={() => setShowAddProduct(true)}
+                    className="mt-4 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 ease-in-out"
+                  >
+                    Add Your First Product
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {products.slice(0, 3).map((product) => (
+                    <div 
+                      key={product._id} 
+                      className="border rounded-lg p-4 transition-transform duration-300 ease-in-out transform hover:-translate-y-1"
+                    >
+                      <div className="bg-gray-200 border-2 border-dashed rounded-xl w-full h-40 mb-4 overflow-hidden">
+                        <img 
+                          src={getProductImageUrl(product)} 
+                          alt={product.name} 
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <h3 className="font-semibold text-gray-800">{product.name}</h3>
+                      <p className="text-gray-600 text-sm capitalize">{product.category}</p>
+                      <div className="flex justify-between items-center mt-2">
+                        <span className="font-bold text-lg text-gray-800">
+                          {formatCurrency(product.discount ? (product.price * (1 - product.discount / 100)) : product.price)}
+                        </span>
+                        {product.discount > 0 && (
+                          <span className="text-sm text-gray-500 line-through">
+                            {formatCurrency(product.price)}
+                          </span>
+                        )}
+                        <div className="flex space-x-2">
+                          <button 
+                            onClick={() => handleEditProduct(product)}
+                            className="text-blue-600 hover:text-blue-800 text-sm"
+                          >
+                            Edit
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteProduct(product._id)}
+                            className="text-red-600 hover:text-red-800 text-sm"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {products.length > 3 && (
+                    <div className="flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg">
+                      <button 
+                        onClick={() => setActiveSection('products')}
+                        className="text-blue-600 hover:text-blue-800 font-medium"
+                      >
+                        View All {products.length} Products
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </>
+        )
+    }
+  }
+
+  // Add delete contact message function
+  const handleDeleteContactMessage = async (contactId) => {
+    if (window.confirm('Are you sure you want to delete this contact message? This action cannot be undone.')) {
+      try {
+        const token = localStorage.getItem('token')
+        const response = await sellerContactAPI.deleteContactMessage(contactId, token)
+        
+        if (response.success) {
+          // Remove the contact message from the local state
+          setContactQueries(contactQueries.filter(contact => contact._id !== contactId))
+          setSuccess('Contact message deleted successfully!')
+          // Reset success message after 3 seconds
+          setTimeout(() => setSuccess(''), 3000)
+        } else {
+          setError('Failed to delete contact message')
+        }
+      } catch (err) {
+        setError('An error occurred while deleting the contact message')
+        console.error(err)
       }
     }
   }
 
-  const item = {
-    hidden: { opacity: 0, y: 20 },
-    show: { opacity: 1, y: 0 }
-  }
-
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Header */}
-      <motion.header 
-        className="bg-white shadow-lg"
-        initial={{ y: -100 }}
-        animate={{ y: 0 }}
-        transition={{ type: "spring", stiffness: 300, damping: 30 }}
-      >
-        <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8 flex justify-between items-center">
-          <motion.h1 
-            className="text-3xl font-bold text-gray-800"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.2 }}
-          >
-            Seller Dashboard
-          </motion.h1>
-          <motion.div
-            className="flex items-center space-x-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-          >
-            <motion.button 
-              onClick={() => setShowAddProduct(true)}
-              className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 ease-in-out transform hover:scale-105"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              Add Product
-            </motion.button>
-          </motion.div>
-        </div>
-      </motion.header>
-
-      <motion.main 
-        className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8"
-        variants={container}
-        initial="hidden"
-        animate="show"
-      >
-        <motion.div 
-          className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12"
-          variants={container}
-          initial="hidden"
-          animate="show"
+    <div className="min-h-screen bg-gray-100 flex">
+      <Sidebar activeSection={activeSection} setActiveSection={setActiveSection} />
+      
+      <div className="flex-1 flex flex-col">
+        {/* Header */}
+        <motion.header 
+          className="bg-white shadow-lg"
+          initial={{ y: -100 }}
+          animate={{ y: 0 }}
+          transition={{ type: "spring", stiffness: 300, damping: 30 }}
         >
-          <motion.div 
-            className="bg-white rounded-xl shadow-lg p-6 transition-transform duration-300 ease-in-out transform hover:-translate-y-1"
-            variants={item}
-            whileHover={{ y: -10 }}
-          >
-            <div className="flex items-center mb-4">
-              <div className="bg-blue-100 p-3 rounded-full mr-4">
-                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                </svg>
-              </div>
-              <h2 className="text-2xl font-semibold text-gray-800">My Products</h2>
-            </div>
-            <p className="text-gray-600 mb-6">View and manage your products</p>
-            <motion.button 
-              onClick={fetchSellerProducts}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 ease-in-out transform hover:scale-105 w-full"
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.98 }}
+          <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8 flex justify-between items-center">
+            <motion.h1 
+              className="text-3xl font-bold text-gray-800"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.2 }}
             >
-              Refresh Products
-            </motion.button>
-          </motion.div>
-          
-          <motion.div 
-            className="bg-white rounded-xl shadow-lg p-6 transition-transform duration-300 ease-in-out transform hover:-translate-y-1"
-            variants={item}
-            whileHover={{ y: -10 }}
-          >
-            <div className="flex items-center mb-4">
-              <div className="bg-purple-100 p-3 rounded-full mr-4">
-                <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                </svg>
-              </div>
-              <h2 className="text-2xl font-semibold text-gray-800">User Queries</h2>
-            </div>
-            <p className="text-gray-600 mb-6">View and respond to user contact queries</p>
-            <motion.button 
-              onClick={() => {
-                setShowContactQueries(true)
-                fetchContactQueries()
-              }}
-              className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 ease-in-out transform hover:scale-105 w-full"
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              View Queries
-            </motion.button>
-          </motion.div>
-        </motion.div>
+              Seller Dashboard
+            </motion.h1>
+          </div>
+        </motion.header>
 
-        <motion.div 
-          className="bg-white rounded-xl shadow-lg p-6"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
+        <motion.main 
+          className="flex-1 p-6"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.1 }}
         >
-          <h2 className="text-2xl font-semibold text-gray-800 mb-6">My Products</h2>
-          
-          {productsError && (
-            <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md">
-              {productsError}
-            </div>
-          )}
-          
-          {productsLoading ? (
-            <div className="text-center py-8">
-              <p className="text-gray-600">Loading your products...</p>
-            </div>
-          ) : products.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-gray-600">You haven't added any products yet.</p>
-              <motion.button 
-                onClick={() => setShowAddProduct(true)}
-                className="mt-4 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 ease-in-out"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                Add Your First Product
-              </motion.button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {products.map((product) => (
-                <motion.div 
-                  key={product._id} 
-                  className="border rounded-lg p-4 transition-transform duration-300 ease-in-out transform hover:-translate-y-1"
-                  whileHover={{ y: -5 }}
-                >
-                  <div className="bg-gray-200 border-2 border-dashed rounded-xl w-full h-40 mb-4 overflow-hidden">
-                    <img 
-                      src={getProductImageUrl(product)} 
-                      alt={product.name} 
-                      className="w-full h-full object-cover"
-                      // onError={(e) => {
-                      //   e.target.src = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=400&h=300'
-                      // }}
-                    />
-                    {/* <img src={"http://localhost:5000"+product?.image}/> */}
-                  </div>
-                  <h3 className="font-semibold text-gray-800">{product.name}</h3>
-                  <p className="text-gray-600 text-sm capitalize">{product.category}</p>
-                  <div className="flex justify-between items-center mt-2">
-                    <span className="font-bold text-lg text-gray-800">
-                      ${product.discount ? (product.price * (1 - product.discount / 100)).toFixed(2) : product.price.toFixed(2)}
-                    </span>
-                    {product.discount > 0 && (
-                      <span className="text-sm text-gray-500 line-through">
-                        ${product.price.toFixed(2)}
-                      </span>
-                    )}
-                    <div className="flex space-x-2">
-                      <motion.button 
-                        onClick={() => handleEditProduct(product)}
-                        className="text-blue-600 hover:text-blue-800 text-sm"
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                      >
-                        Edit
-                      </motion.button>
-                      <motion.button 
-                        onClick={() => handleDeleteProduct(product._id)}
-                        className="text-red-600 hover:text-red-800 text-sm"
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                      >
-                        Delete
-                      </motion.button>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          )}
-        </motion.div>
-      </motion.main>
+          {renderContent()}
+        </motion.main>
+      </div>
 
       {/* Add Product Modal */}
       <AnimatePresence>
@@ -589,16 +830,14 @@ const SellerDashboard = () => {
               <div className="p-6 flex-grow overflow-y-auto">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-2xl font-semibold text-gray-800">Add New Product</h3>
-                  <motion.button 
+                  <button 
                     onClick={() => setShowAddProduct(false)}
                     className="text-gray-500 hover:text-gray-700"
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
                   >
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
-                  </motion.button>
+                  </button>
                 </div>
                 <form onSubmit={handleSubmit} className="flex flex-col h-full">
                   {error && (
@@ -642,7 +881,7 @@ const SellerDashboard = () => {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Price ($)
+                        Price (₹)
                       </label>
                       <input
                         type="number"
@@ -734,25 +973,21 @@ const SellerDashboard = () => {
 
                   </div>
                   <div className="mt-6 flex justify-end space-x-3 pt-4 border-t border-gray-200">
-                    <motion.button
+                    <button
                       type="button"
                       onClick={() => setShowAddProduct(false)}
                       className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-                      whileHover={{ scale: 1.03 }}
-                      whileTap={{ scale: 0.98 }}
                       disabled={loading}
                     >
                       Cancel
-                    </motion.button>
-                    <motion.button
+                    </button>
+                    <button
                       type="submit"
                       className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
-                      whileHover={{ scale: 1.03 }}
-                      whileTap={{ scale: 0.98 }}
                       disabled={loading}
                     >
                       {loading ? 'Adding...' : 'Add Product'}
-                    </motion.button>
+                    </button>
                   </div>
                 </form>
               </div>
@@ -780,16 +1015,14 @@ const SellerDashboard = () => {
               <div className="p-6 flex-grow overflow-y-auto">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-2xl font-semibold text-gray-800">Edit Product</h3>
-                  <motion.button 
+                  <button 
                     onClick={() => setShowEditProduct(false)}
                     className="text-gray-500 hover:text-gray-700"
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
                   >
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
-                  </motion.button>
+                  </button>
                 </div>
                 <form onSubmit={handleSubmitEdit} className="flex flex-col h-full">
                   {error && (
@@ -833,7 +1066,7 @@ const SellerDashboard = () => {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Price ($)
+                        Price (₹)
                       </label>
                       <input
                         type="number"
@@ -925,25 +1158,21 @@ const SellerDashboard = () => {
 
                   </div>
                   <div className="mt-6 flex justify-end space-x-3 pt-4 border-t border-gray-200">
-                    <motion.button
+                    <button
                       type="button"
                       onClick={() => setShowEditProduct(false)}
                       className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-                      whileHover={{ scale: 1.03 }}
-                      whileTap={{ scale: 0.98 }}
                       disabled={loading}
                     >
                       Cancel
-                    </motion.button>
-                    <motion.button
+                    </button>
+                    <button
                       type="submit"
                       className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                      whileHover={{ scale: 1.03 }}
-                      whileTap={{ scale: 0.98 }}
                       disabled={loading}
                     >
                       {loading ? 'Updating...' : 'Update Product'}
-                    </motion.button>
+                    </button>
                   </div>
                 </form>
               </div>
@@ -971,16 +1200,14 @@ const SellerDashboard = () => {
               <div className="p-6 flex-grow overflow-y-auto">
                 <div className="flex justify-between items-center mb-6">
                   <h3 className="text-2xl font-semibold text-gray-800">User Contact Queries</h3>
-                  <motion.button 
+                  <button 
                     onClick={() => setShowContactQueries(false)}
                     className="text-gray-500 hover:text-gray-700"
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
                   >
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
-                  </motion.button>
+                  </button>
                 </div>
 
                 {contactLoading ? (
@@ -998,59 +1225,71 @@ const SellerDashboard = () => {
                 ) : contactQueries.length > 0 ? (
                   <div className="space-y-4">
                     {contactQueries.map((contact) => (
-                      <div key={contact._id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50">
+                      <div 
+                        key={contact._id} 
+                        className="border border-gray-200 rounded-lg p-4 transition-all duration-300 hover:shadow-md"
+                      >
                         <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <div className="flex items-center">
+                              <h3 className="font-semibold text-gray-800 text-lg">{contact.subject}</h3>
+                              <span className={`ml-3 px-2 py-1 text-xs rounded-full ${
+                                contact.response ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                              }`}>
+                                {contact.response ? 'Replied' : 'successfull'}
+                              </span>
+                            </div>
+                            <p className="text-gray-600 mt-2">{contact.message}</p>
+                          </div>
+                          <span className="text-sm text-gray-500 whitespace-nowrap ml-4">
+                            {new Date(contact.createdAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
                           <div>
-                            <h4 className="font-semibold text-gray-800">{contact.subject}</h4>
-                            <p className="text-gray-600 mt-1">{contact.message}</p>
-                            <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
-                              <div>
-                                <span className="font-medium text-gray-700">Name:</span>
-                                <span className="ml-2 text-gray-600">{contact.name}</span>
-                              </div>
-                              <div>
-                                <span className="font-medium text-gray-700">Email:</span>
-                                <span className="ml-2 text-gray-600">{contact.email}</span>
-                              </div>
-                              <div>
-                                <span className="font-medium text-gray-700">Date:</span>
-                                <span className="ml-2 text-gray-600">
-                                  {new Date(contact.createdAt).toLocaleDateString()}
-                                </span>
+                            <span className="font-medium text-gray-700">Message ID:</span>
+                            <span className="ml-2 text-gray-600 font-mono">{contact._id.substring(0, 8)}...</span>
+                          </div>
+                        </div>
+                        
+                        {/* Seller Response */}
+                        {contact.response && (
+                          <div className="mt-4 p-4 bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-lg">
+                            <div className="flex justify-between items-start">
+                              <h4 className="font-semibold text-purple-800 flex items-center">
+                                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                                </svg>
+                                Seller Response
+                              </h4>
+                              <span className="text-sm text-purple-600">
+                                {new Date(contact.response.createdAt).toLocaleDateString()}
+                              </span>
+                            </div>
+                            <div className="mt-3">
+                              <p className="text-purple-700">{contact.response.message}</p>
+                              <div className="mt-3 flex items-center text-xs text-purple-500">
+                                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                </svg>
+                                <span>From: {contact.response.name}</span>
                               </div>
                             </div>
                           </div>
-                          <motion.button
-                            onClick={() => {
-                              setSelectedContact(contact)
-                              setShowResponseModal(true)
-                            }}
-                            className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded-lg text-sm"
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                          >
-                            Respond
-                          </motion.button>
-                        </div>
+                        )}
                       </div>
                     ))}
                   </div>
                 ) : (
                   <div className="text-center py-8">
-                    <p className="text-gray-600">No contact queries available</p>
+                    <div className="flex justify-center mb-4">
+                      <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                      </svg>
+                    </div>
+                    <p className="text-gray-600">No contact queries received yet.</p>
                   </div>
                 )}
-
-                <div className="mt-6 flex justify-end">
-                  <motion.button
-                    onClick={() => setShowContactQueries(false)}
-                    className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
-                    whileHover={{ scale: 1.03 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    Close
-                  </motion.button>
-                </div>
               </div>
             </motion.div>
           </motion.div>
@@ -1061,51 +1300,58 @@ const SellerDashboard = () => {
       <AnimatePresence>
         {showResponseModal && (
           <motion.div 
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto"
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
             <motion.div 
-              className="bg-white rounded-xl shadow-xl w-full max-w-2xl my-8 mx-auto max-h-[90vh] flex flex-col"
+              className="bg-white rounded-xl shadow-xl w-full max-w-md"
               initial={{ scale: 0.8, y: -50 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.8, y: -50 }}
               transition={{ type: "spring", damping: 25 }}
             >
-              <div className="p-6 flex-grow overflow-y-auto">
-                <div className="flex justify-between items-center mb-6">
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-4">
                   <h3 className="text-2xl font-semibold text-gray-800">Respond to Query</h3>
-                  <motion.button 
+                  <button 
                     onClick={() => setShowResponseModal(false)}
                     className="text-gray-500 hover:text-gray-700"
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
                   >
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
-                  </motion.button>
+                  </button>
                 </div>
-
-                {selectedContact && (
-                  <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-                    <h4 className="font-semibold text-gray-800">{selectedContact.subject}</h4>
-                    <p className="text-gray-600 mt-2">{selectedContact.message}</p>
-                    <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-                      <div>
-                        <span className="font-medium text-gray-700">From:</span>
-                        <span className="ml-2 text-gray-600">{selectedContact.name}</span>
-                      </div>
-                      <div>
-                        <span className="font-medium text-gray-700">Email:</span>
-                        <span className="ml-2 text-gray-600">{selectedContact.email}</span>
-                      </div>
-                    </div>
+                
+                {error && (
+                  <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md">
+                    {error}
                   </div>
                 )}
-
+                
+                {success && (
+                  <div className="mb-4 p-3 bg-green-100 text-green-700 rounded-md">
+                    {success}
+                  </div>
+                )}
+                
                 <form onSubmit={sendContactResponse}>
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Subject
+                    </label>
+                    <p className="font-medium">{selectedContact?.subject}</p>
+                  </div>
+                  
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Message
+                    </label>
+                    <p className="text-gray-600">{selectedContact?.message}</p>
+                  </div>
+                  
                   <div className="mb-4">
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Your Response
@@ -1113,33 +1359,29 @@ const SellerDashboard = () => {
                     <textarea
                       value={responseMessage}
                       onChange={(e) => setResponseMessage(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       placeholder="Enter your response..."
-                      rows={5}
+                      rows={4}
                       required
                     ></textarea>
                   </div>
-
-                  <div className="flex justify-end space-x-3">
-                    <motion.button
+                  
+                  <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+                    <button
                       type="button"
                       onClick={() => setShowResponseModal(false)}
                       className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-                      whileHover={{ scale: 1.03 }}
-                      whileTap={{ scale: 0.98 }}
                       disabled={responseLoading}
                     >
                       Cancel
-                    </motion.button>
-                    <motion.button
+                    </button>
+                    <button
                       type="submit"
                       className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
-                      whileHover={{ scale: 1.03 }}
-                      whileTap={{ scale: 0.98 }}
                       disabled={responseLoading}
                     >
                       {responseLoading ? 'Sending...' : 'Send Response'}
-                    </motion.button>
+                    </button>
                   </div>
                 </form>
               </div>

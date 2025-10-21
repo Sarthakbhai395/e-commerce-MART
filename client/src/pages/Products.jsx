@@ -152,7 +152,7 @@ const Products = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
       <motion.div 
         className="max-w-7xl mx-auto px-4 py-8"
         initial={{ opacity: 0 }}
@@ -182,13 +182,13 @@ const Products = () => {
             <input
               type="text"
               placeholder="Search products..."
-              className="flex-1 border border-gray-300 rounded-l-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="flex-1 border border-gray-300 rounded-l-full px-6 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
             <button
               type="submit"
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-r-lg transition duration-300"
+              className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-8 py-3 rounded-r-full transition duration-300 shadow-md hover:shadow-lg"
             >
               Search
             </button>
@@ -197,37 +197,39 @@ const Products = () => {
         
         {/* Filter and Sort Controls */}
         <motion.div 
-          className="flex flex-col sm:flex-row justify-between mb-8 gap-4"
+          className="flex flex-col sm:flex-row justify-between mb-8 gap-6"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
         >
           <div className="w-full sm:w-1/2">
-            <label htmlFor="filter" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="filter" className="block text-sm font-medium text-gray-700 mb-2">
               Filter by Category
             </label>
             <select
               id="filter"
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
-              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+              className="mt-1 block w-full pl-4 pr-10 py-3 text-base border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-full shadow-sm bg-white"
             >
               <option value="all">All Categories</option>
               <option value="technology">Technology</option>
               <option value="clothing">Clothing</option>
-              <option value="home appliances">Home Appliances</option>
+              <option value="home">Home & Kitchen</option>
+              <option value="books">Books</option>
+              <option value="sports">Sports</option>
             </select>
           </div>
           
           <div className="w-full sm:w-1/2">
-            <label htmlFor="sort" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="sort" className="block text-sm font-medium text-gray-700 mb-2">
               Sort by
             </label>
             <select
               id="sort"
               value={sort}
               onChange={(e) => setSort(e.target.value)}
-              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+              className="mt-1 block w-full pl-4 pr-10 py-3 text-base border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-full shadow-sm bg-white"
             >
               <option value="name">Name</option>
               <option value="price-low">Price: Low to High</option>
@@ -241,15 +243,18 @@ const Products = () => {
         {/* Clear Search Button */}
         {searchQuery && (
           <motion.div 
-            className="text-center mb-4"
+            className="text-center mb-6"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
           >
             <button 
               onClick={() => setSearchQuery('')}
-              className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+              className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center justify-center mx-auto group"
             >
               Clear search
+              <svg className="w-4 h-4 ml-1 group-hover:rotate-90 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
             </button>
           </motion.div>
         )}
@@ -257,7 +262,7 @@ const Products = () => {
         {/* Products Grid */}
         {sortedProducts.length > 0 ? (
           <motion.div 
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8"
             variants={container}
             initial="hidden"
             animate="show"
@@ -273,11 +278,22 @@ const Products = () => {
           </motion.div>
         ) : (
           <motion.div 
-            className="text-center py-12"
+            className="text-center py-16 bg-white rounded-2xl shadow-lg"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
           >
-            <p className="text-xl text-gray-600">No products found</p>
+            <div className="text-5xl mb-4">🔍</div>
+            <h3 className="text-2xl font-bold text-gray-800 mb-2">No Products Found</h3>
+            <p className="text-gray-600 mb-6">Try adjusting your search or filter criteria</p>
+            <button 
+              onClick={() => {
+                setSearchQuery('');
+                setFilter('all');
+              }}
+              className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium py-2 px-6 rounded-full transition duration-300"
+            >
+              Clear All Filters
+            </button>
           </motion.div>
         )}
       </motion.div>

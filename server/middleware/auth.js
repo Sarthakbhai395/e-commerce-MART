@@ -29,6 +29,14 @@ exports.protect = async (req, res, next) => {
 
     req.user = await User.findById(decoded.id);
 
+    // Check if user is blocked
+    if (req.user.isBlocked) {
+      return res.status(401).json({
+        success: false,
+        error: 'Your account has been blocked by admin'
+      });
+    }
+
     next();
   } catch (err) {
     return res.status(401).json({
@@ -59,6 +67,14 @@ exports.optionalAuth = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     req.user = await User.findById(decoded.id);
+
+    // Check if user is blocked
+    if (req.user.isBlocked) {
+      return res.status(401).json({
+        success: false,
+        error: 'Your account has been blocked by admin'
+      });
+    }
 
     next();
   } catch (err) {

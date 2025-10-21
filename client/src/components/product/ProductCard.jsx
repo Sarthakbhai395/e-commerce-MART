@@ -9,27 +9,19 @@ import { motion, AnimatePresence } from 'framer-motion'
 const ProductCard = ({ product }) => {
   const { addToCart, isInCart } = useCart()
   const { addToWishlist, isInWishlist } = useWishlist()
-  const { addNotification } = useNotification()
+  const { addNotification, addModalNotification } = useNotification()
   const { user } = useAuth()
   const [isAdding, setIsAdding] = useState(false)
-  const [showSellerModal, setShowSellerModal] = useState(false)
 
   const handleAddToCart = async (e) => {
     e.preventDefault()
     e.stopPropagation()
     
-    // Check if user is seller or admin
-    if (user && (user.role === 'admin' || user.role === 'seller')) {
-      setShowSellerModal(true)
-      return
-    }
-    
     setIsAdding(true)
     
-    // Ensure we're passing the correct product object with _id
     try {
       await addToCart(product)
-      addNotification(`${product.name} added to your cart!`, 'success')
+      // Notification is now handled in CartContext with modal notification
     } catch (error) {
       // Error will be handled by the CartContext
     } finally {
@@ -41,16 +33,9 @@ const ProductCard = ({ product }) => {
     e.preventDefault()
     e.stopPropagation()
     
-    // Check if user is seller or admin
-    if (user && (user.role === 'admin' || user.role === 'seller')) {
-      setShowSellerModal(true)
-      return
-    }
-    
-    // Ensure we're passing the correct product object with _id
     try {
       await addToWishlist(product)
-      addNotification(`${product.name} added to your wishlist!`, 'success')
+      // Notification is now handled in WishlistContext with modal notification
     } catch (error) {
       // Error will be handled by the WishlistContext
     }
@@ -78,7 +63,11 @@ const ProductCard = ({ product }) => {
       product.image.startsWith('https://')
     );
     
-    // For local images, use the correct path
+    // For local images, use the correct path with the full URL
+    if (product.image && product.image.startsWith('/uploads/')) {
+      return `http://localhost:5000${product.image}`;
+    }
+    
     // For external images, use as is
     if (isExternalUrl) {
       return product.image;
@@ -86,13 +75,8 @@ const ProductCard = ({ product }) => {
     
     // If product has a specific local image, use it with the correct path
     if (product.image && product.image !== 'no-photo.jpg' && product.image !== '/uploads/no-photo.jpg') {
-      // Check if the image path already starts with /uploads/
-      if (product.image.startsWith('/uploads/')) {
-        return `http://localhost:5000${product.image}`;
-      } else {
-        // Add /uploads/ prefix
-        return `http://localhost:5000/uploads/${product.image}`;
-      }
+      // Add /uploads/ prefix
+      return `http://localhost:5000/uploads/${product.image}`;
     }
     
     // For default no-photo image, use the correct path
@@ -179,13 +163,13 @@ const ProductCard = ({ product }) => {
 
   return (
     <motion.div 
-      className="bg-white rounded-xl shadow-lg overflow-hidden h-full flex flex-col product-card"
-      whileHover={{ y: -10 }}
+      className="bg-white rounded-2xl shadow-md hover:shadow-xl overflow-hidden h-full flex flex-col product-card transition-all duration-300 group"
+      whileHover={{ y: -5 }}
       transition={{ type: "spring", stiffness: 300 }}
     >
       <motion.div 
         onClick={handleImageClick}
-        className="cursor-pointer"
+        className="cursor-pointer relative"
         whileHover={{ scale: 1.02 }}
         transition={{ duration: 0.3 }}
       >
@@ -195,35 +179,54 @@ const ProductCard = ({ product }) => {
           className="w-full h-48 object-cover"
           onError={handleImageError}
         />
+        {product?.discount && product.discount > 0 && (
+          <motion.span 
+            className="absolute top-3 left-3 bg-gradient-to-r from-red-500 to-red-600 text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-lg"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.2 }}
+          >
+            {product.discount}% OFF
+          </motion.span>
+        )}
+        <motion.button
+          onClick={handleAddToWishlist}
+          className={`absolute top-3 right-3 p-2 rounded-full backdrop-blur-sm transition-all duration-300 ${
+            isInWishlist(productId)
+              ? 'text-red-500 bg-red-100 hover:bg-red-200'
+              : 'text-gray-700 bg-white/80 hover:bg-white hover:text-red-500'
+          }`}
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+          </svg>
+        </motion.button>
       </motion.div>
-      <div className="p-6 flex-grow flex flex-col">
+      <div className="p-5 flex-grow flex flex-col">
         <div className="flex justify-between items-start mb-2">
           <motion.div 
             onClick={handleImageClick}
             className="cursor-pointer block"
             whileHover={{ x: 5 }}
           >
-            <h3 className="font-semibold text-lg text-dark">
+            <h3 className="font-semibold text-lg text-gray-800 group-hover:text-blue-600 transition-colors">
               {product?.name || 'Product Title'}
             </h3>
           </motion.div>
-          {product?.discount && product.discount > 0 && (
-            <span className="bg-red-100 text-red-800 text-xs font-semibold px-2.5 py-0.5 rounded">
-              {product.discount}% OFF
-            </span>
-          )}
         </div>
-        <p className="text-neutral text-sm mb-4">{product?.category || 'Category'}</p>
+        <p className="text-gray-600 text-sm mb-3">{product?.category || 'Category'}</p>
         <div className="mt-auto">
           <div className="flex justify-between items-center mb-4">
             <div>
               {product?.discount && product.discount > 0 ? (
                 <>
-                  <span className="font-bold text-xl text-dark">{formatCurrency(discountedPrice)}</span>
-                  <span className="ml-2 text-sm text-neutral line-through">{formatCurrency(product?.price)}</span>
+                  <span className="font-bold text-xl text-gray-800">{formatCurrency(discountedPrice)}</span>
+                  <span className="ml-2 text-sm text-gray-500 line-through">{formatCurrency(product?.price)}</span>
                 </>
               ) : (
-                <span className="font-bold text-xl text-dark">{formatCurrency(product?.price)}</span>
+                <span className="font-bold text-xl text-gray-800">{formatCurrency(product?.price)}</span>
               )}
             </div>
           </div>
@@ -231,13 +234,13 @@ const ProductCard = ({ product }) => {
             {!isSellerOrAdmin ? (
               <motion.button 
                 onClick={handleAddToCart}
-                className={`font-medium py-2 px-4 rounded-lg transition duration-300 ease-in-out flex-grow relative overflow-hidden ${
+                className={`font-medium py-2.5 px-4 text-sm rounded-lg transition-all duration-300 flex-grow relative overflow-hidden shadow-md hover:shadow-lg ${
                   productInCart 
-                    ? 'bg-green-500 hover:bg-green-600 text-white' 
-                    : 'bg-blue-600 hover:bg-blue-700 text-white'
+                    ? 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white' 
+                    : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white'
                 } touch-target responsive-btn`}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.9 }}
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.98 }}
                 disabled={isAdding}
               >
                 <span className="relative z-10 flex items-center justify-center">
@@ -267,74 +270,9 @@ const ProductCard = ({ product }) => {
                 />
               </motion.button>
             ) : null}
-            {!isSellerOrAdmin ? (
-              <motion.button 
-                onClick={handleAddToWishlist}
-                className={`p-2 rounded-full ${
-                  isInWishlist(productId)
-                    ? 'text-red-500 hover:text-red-700 bg-red-50'
-                    : 'text-gray-400 hover:text-red-500 bg-gray-100'
-                } touch-target`}
-                whileHover={{ scale: 1.2 }}
-                whileTap={{ scale: 0.9 }}
-              >
-                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                </svg>
-              </motion.button>
-            ) : null}
           </div>
         </div>
       </div>
-
-      {/* Seller Modal */}
-      <AnimatePresence>
-        {showSellerModal && (
-          <motion.div 
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <motion.div 
-              className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 modal-content"
-              initial={{ scale: 0.8, y: -50 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.8, y: -50 }}
-              transition={{ type: "spring", damping: 25 }}
-            >
-              <div className="text-center">
-                <motion.div 
-                  className="mx-auto bg-red-100 w-16 h-16 rounded-full flex items-center justify-center mb-4"
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-                >
-                  <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
-                </motion.div>
-                
-                <h3 className="text-2xl font-bold text-gray-800 mb-2">Access Restricted</h3>
-                <p className="text-gray-600 mb-6">
-                  Seller can't buy or add to cart items. Only regular users can purchase products.
-                </p>
-                
-                <div className="flex justify-center space-x-3">
-                  <motion.button
-                    onClick={() => setShowSellerModal(false)}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 touch-target"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    OK
-                  </motion.button>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </motion.div>
   )
 }
