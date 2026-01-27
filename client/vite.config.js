@@ -14,5 +14,14 @@ export default defineConfig({
       }
     }
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: undefined,
+      },
+    },
+    assetsDir: 'assets',
+    sourcemap: false,
+  },
   envPrefix: ['VITE_', 'REACT_APP_'], // Ensure both prefixes are recognized
 })
