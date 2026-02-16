@@ -55,7 +55,42 @@ exports.login = async (req, res, next) => {
       });
     }
 
-    // Check for user
+    // Special case for predefined admin
+    if (email === 'admin@gmail.com' && password === '123456') {
+      // Find the predefined admin user
+      const user = await User.findOne({ email: 'admin@gmail.com', role: 'admin' }).select('+password');
+      
+      if (!user) {
+        return res.status(401).json({
+          success: false,
+          error: 'Invalid credentials'
+        });
+      }
+      
+      // Check if user is blocked
+      if (user.isBlocked) {
+        return res.status(401).json({
+          success: false,
+          error: 'You are blocked by admin'
+        });
+      }
+      
+      // Check if password matches (for predefined admin)
+      const isMatch = await user.matchPassword(password);
+      
+      if (!isMatch) {
+        return res.status(401).json({
+          success: false,
+          error: 'Invalid credentials'
+        });
+      }
+      
+      // Override role to admin for predefined admin
+      sendTokenResponse(user, 200, res);
+      return;
+    }
+
+    // Regular user login
     const user = await User.findOne({ email }).select('+password');
 
     if (!user) {
