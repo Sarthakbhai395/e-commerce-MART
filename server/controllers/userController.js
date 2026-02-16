@@ -21,6 +21,26 @@ exports.getUsers = async (req, res, next) => {
   }
 };
 
+// @desc    Get all sellers
+// @route   GET /api/users/sellers
+// @access  Private/Admin
+exports.getSellers = async (req, res, next) => {
+  try {
+    const sellers = await User.find({ role: 'seller' });
+
+    res.status(200).json({
+      success: true,
+      count: sellers.length,
+      data: sellers
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: 'Server Error'
+    });
+  }
+};
+
 // @desc    Get single user
 // @route   GET /api/users/:id
 // @access  Private/Admin

@@ -168,6 +168,14 @@ export const userAPI = {
     })
   },
 
+  getSellersOnly: async (token) => {
+    return apiRequest('/api/users/admin/sellers', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    })
+  },
+
   deleteUser: async (id, token) => {
     return apiRequest(`/api/users/admin/${id}`, {
       method: 'DELETE',

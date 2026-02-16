@@ -7,7 +7,8 @@ const {
   deleteUser,
   updateProfile,
   blockUser,
-  unblockUser
+  unblockUser,
+  getSellers
 } = require('../controllers/userController');
 
 const {
@@ -43,6 +44,10 @@ router.route('/admin/:id/block')
 
 router.route('/admin/:id/unblock')
   .put(unblockUser);
+
+// Sellers route
+router.route('/admin/sellers')
+  .get(getSellers);
 
 // User profile route (protected but no admin required)
 router.route('/profile')

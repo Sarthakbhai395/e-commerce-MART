@@ -50,7 +50,8 @@ const AdminDashboard = () => {
       const response = await userAPI.getUsers(token)
       if (response.success) {
         // Filter out admins and sellers, keep only regular users
-        const regularUsers = (response.data || response.users || []).filter(user => user.role === 'user')
+        const allUsers = response.data || response.users || [];
+        const regularUsers = allUsers.filter(user => user.role === 'user')
         setUsers(regularUsers)
       } else {
         setError('Failed to fetch users')
@@ -68,11 +69,9 @@ const AdminDashboard = () => {
     try {
       setLoading(true)
       setError('')
-      const response = await userAPI.getSellers(token)
+      const response = await userAPI.getSellersOnly(token)
       if (response.success) {
-        // Filter to keep only sellers
-        const sellerUsers = (response.data || response.users || []).filter(user => user.role === 'seller')
-        setSellers(sellerUsers)
+        setSellers(response.data || response.sellers || [])
       } else {
         setError('Failed to fetch sellers')
       }

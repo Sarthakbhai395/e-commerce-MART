@@ -17,21 +17,31 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     
-    const result = await handleLogin(email, password, role)
-    
-    if (result.success) {
-      // Check if there's a redirect path
-      const from = location.state?.from?.pathname || '/'
+    // Check for predefined admin credentials
+    if (email === 'admin@gmail.com' && password === '123456') {
+      // Override role to admin for predefined admin
+      const result = await handleLogin(email, password, 'admin')
       
-      // Redirect based on role or to the attempted location
-      if (from !== '/' && from !== '/login') {
-        navigate(from)
-      } else if (role === 'admin') {
+      if (result.success) {
         navigate('/admin/dashboard')
-      } else if (role === 'seller') {
-        navigate('/seller/dashboard')
-      } else {
-        navigate('/user/dashboard')
+      }
+    } else {
+      const result = await handleLogin(email, password, role)
+      
+      if (result.success) {
+        // Check if there's a redirect path
+        const from = location.state?.from?.pathname || '/'
+        
+        // Redirect based on role or to the attempted location
+        if (from !== '/' && from !== '/login') {
+          navigate(from)
+        } else if (role === 'admin') {
+          navigate('/admin/dashboard')
+        } else if (role === 'seller') {
+          navigate('/seller/dashboard')
+        } else {
+          navigate('/user/dashboard')
+        }
       }
     }
   }
@@ -133,17 +143,23 @@ const Login = () => {
               <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-1">
                 Login as
               </label>
-              <select
-                id="role"
-                name="role"
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
-                className="mt-1 block w-full pl-3 pr-10 py-3 text-base border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent sm:text-sm rounded-lg transition duration-300 bg-white"
-              >
-                <option value="user">User</option>
-                <option value="seller">Seller</option>
-                <option value="admin">Admin</option>
-              </select>
+              {!(email === 'admin@gmail.com' && password === '123456') && (
+                <select
+                  id="role"
+                  name="role"
+                  value={role}
+                  onChange={(e) => setRole(e.target.value)}
+                  className="mt-1 block w-full pl-3 pr-10 py-3 text-base border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent sm:text-sm rounded-lg transition duration-300 bg-white"
+                >
+                  <option value="user">User</option>
+                  <option value="seller">Seller</option>
+                </select>
+              )}
+              {(email === 'admin@gmail.com' && password === '123456') && (
+                <div className="mt-1 block w-full pl-3 pr-10 py-3 text-base border border-gray-300 rounded-lg bg-gray-100 text-gray-700">
+                  Admin (Predefined)
+                </div>
+              )}
             </div>
           </div>
 
